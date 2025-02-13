@@ -7,9 +7,18 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Include Polyscope
 add_subdirectory(external/polyscope)
 include_directories(external/polyscope/include)
+include_directories(external/imgui-filebrowser)
+include_directories(external/tinyobjloader)
+include_directories(include)
+
+# Automatic retrieval of source files
+file(GLOB_RECURSE SOURCES src/*.cpp)
+
+# Automatic retrieval of header files
+file(GLOB_RECURSE HEADERS include/*.h)
 
 # Add the executable
-add_executable(OrCoeur main.cpp)
+add_executable(OrCoeur ${SOURCES} ${HEADERS})
 
 # Link Polyscope to the executable
 target_link_libraries(OrCoeur polyscope)

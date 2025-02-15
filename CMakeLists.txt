@@ -8,7 +8,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_subdirectory(external/polyscope)
 include_directories(external/polyscope/include)
 include_directories(external/imgui-filebrowser)
-include_directories(external/tinyobjloader)
 include_directories(include)
 
 # Automatic retrieval of source files

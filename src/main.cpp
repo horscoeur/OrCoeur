@@ -1,11 +1,12 @@
 #include "polyscope/polyscope.h"
 #include "ui.h"
 #include "imfilebrowser.h"
+#include "mesh_conversion.h"
 
 /**
  * @brief Main function initializing Polyscope and handling UI.
  */
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
     // Initialize Polyscope
     polyscope::init();
 
@@ -13,7 +14,7 @@ int main(int argc, char** argv) {
     char filename[2048] = "";
     ImGui::FileBrowser fileDialog;
     fileDialog.SetTitle("Open a mesh file");
-    fileDialog.SetTypeFilters({ ".obj", ".ply", ".stl" });
+    fileDialog.SetTypeFilters({".obj", ".ply"});
 
     // Apply ImGui style
     polyscope::options::configureImGuiStyleCallback = configureImGuiStyle;
@@ -21,6 +22,7 @@ int main(int argc, char** argv) {
     // Register user callback for UI
     polyscope::state::userCallback = [&]() {
         handleFileSelection(filename, fileDialog);
+        conversionInfoPopup(filename, fileDialog);
     };
 
     // Show Polyscope GUI

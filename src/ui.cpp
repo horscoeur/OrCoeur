@@ -4,6 +4,7 @@
 #include <iostream>
 #include <cstring>
 
+#include "mesh_conversion.h"
 #include "polyscope/surface_mesh.h"
 
 void configureImGuiStyle() {
@@ -66,6 +67,19 @@ void handleFileSelection(char* filename, ImGui::FileBrowser& fileDialog) {
     if (ImGui::Button("Open a mesh file")) {
         fileDialog.Open();
     }
+    ImGui::SameLine();
+    if (ImGui::Button("Convert to OBJSoup")) {
+
+        // If a file is loaded
+        if (filename[0] != '\0') {
+            const std::string extension = std::string(filename).substr(std::string(filename).find_last_of('.'));
+            if (extension != ".obj" && extension != ".ply") {
+                std::cerr << "Error: Unsupported file format." << std::endl;
+            } else {
+                ImGui::OpenPopup("Mesh Conversion");
+            }
+        }
+    }
     ImGui::PopItemWidth();
 
     fileDialog.Display();
@@ -74,15 +88,57 @@ void handleFileSelection(char* filename, ImGui::FileBrowser& fileDialog) {
         std::strcpy(filename, fileDialog.GetSelected().string().c_str());
         std::cout << "Loading " << filename << "..." << std::endl;
 
-        std::vector<std::array<double, 3>> vertices;
-        std::vector<std::array<int, 3>> faces;
-
-        if (loadOBJFile(filename, vertices, faces)) {
-            polyscope::registerSurfaceMesh("Loaded Mesh", vertices, faces);
-        } else {
-            std::cerr << "Failed to load the mesh file." << std::endl;
-        }
+        // Load the mesh
+        loadMesh(filename, fileDialog.GetSelected().extension().string());
 
         fileDialog.ClearSelected();
+    }
+}
+
+void conversionInfoPopup(char* filename, ImGui::FileBrowser& fileDialog) {
+    if (ImGui::BeginPopupModal("Mesh Conversion", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::Text("The selected mesh will be converted to OBJSoup format.");
+        ImGui::Text("Would you like to proceed? (The original file will not be modified.)");
+
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
+        ImGui::Separator();
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 2);
+
+        if (ImGui::Button("Yes", ImVec2(120, 0))) {
+            const std::string newFilename = std::string(filename).substr(0, std::string(filename).find_last_of('.')) + ".objs";
+
+            // Perform the conversion
+            if (filename[std::strlen(filename) - 1] == 'j') {
+                convertOBJtoOBJSoup(filename, newFilename, "vertex.tmp", "triangle.tmp");
+            } else {
+                convertPLYtoOBJSoup(filename, newFilename, "vertex.tmp", "triangle.tmp");
+            }
+
+            // Close the popup and clear the selected file
+            ImGui::CloseCurrentPopup();
+            fileDialog.ClearSelected();
+        }
+        ImGui::SetItemDefaultFocus();
+        ImGui::SameLine();
+        if (ImGui::Button("No", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+            fileDialog.ClearSelected();
+        }
+        ImGui::EndPopup();
+    }
+}
+
+void loadMesh(const char* filename, const std::string& extension) {
+    std::vector<std::array<float, 3>> vertices;
+    std::vector<std::array<int, 3>> faces;
+
+    if (extension == ".obj") {
+        extractVerticesAndFacesFromOBJ(filename, vertices, faces);
+        polyscope::registerSurfaceMesh("Loaded Mesh", vertices, faces);
+    } else if (extension == ".ply") {
+        extractVerticesAndFacesFromPLY(filename, vertices, faces);
+        polyscope::registerSurfaceMesh("Loaded Mesh", vertices, faces);
+    } else {
+        std::cerr << "Error: Unsupported file format." << std::endl;
     }
 }

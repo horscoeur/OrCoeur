@@ -5,6 +5,7 @@
 
 #include "mesh_conversion.h"
 #include "structures.h"
+#include "utility.h"
 
 
 // ---------------- Operator Overloads ----------------
@@ -324,6 +325,9 @@ void convertOBJtoOBJSoup(const std::string &objFilename, const std::string &outp
     // Pass 3: Dereference v3
     dereferencePass3("triangles_pass2.bin", "vertices.bin", "triangles_final.bin");
 
+    // Remove the existing output file if it exists
+    std::remove(outputFilename.c_str());
+
     // If outputFilename ends with ".bin", add a header (for the number of triangles and format) and move the binary file directly to the output
     // Else, convert the binary file to a well-formatted text file
     if (outputFilename.substr(outputFilename.size() - 4) == ".bin") {
@@ -370,6 +374,9 @@ void convertPLYtoOBJSoup(const std::string &plyFilename, const std::string &outp
     dereferencePass1("triangles.bin", "vertices.bin", "triangles_pass1.bin");
     dereferencePass2("triangles_pass1.bin", "vertices.bin", "triangles_pass2.bin");
     dereferencePass3("triangles_pass2.bin", "vertices.bin", "triangles_final.bin");
+
+    // Remove the existing output file if it exists
+    std::remove(outputFilename.c_str());
 
     // If outputFilename ends with ".bin", move the binary file directly to the output
     // Else, convert the binary file to a well-formatted text file
@@ -492,8 +499,8 @@ void convertOBJSoupToOBJ(const std::string &inputFilename, const std::string &ou
     }
 
     // Creating temporary files for vertices and faces
-    std::ofstream vertexFile("vertices.tmp", std::ios::binary);
-    std::ofstream faceFile("triangles.tmp", std::ios::binary);
+    std::ofstream vertexFile("vertices.bin", std::ios::binary);
+    std::ofstream faceFile("triangles.bin", std::ios::binary);
     if (!vertexFile.is_open() || !faceFile.is_open()) {
         std::cerr << "Error: Unable to create temporary files." << std::endl;
         return;
@@ -512,10 +519,13 @@ void convertOBJSoupToOBJ(const std::string &inputFilename, const std::string &ou
     vertexFile.close();
     faceFile.close();
 
+    // Remove the existing output file if it exists
+    std::remove(outputFilename.c_str());
+
     // Concatenating the temporary files into the final OBJ file
     std::ofstream finalOutFile(outputFilename);
-    std::ifstream vertexFileIn("vertices.tmp");
-    std::ifstream faceFileIn("triangles.tmp");
+    std::ifstream vertexFileIn("vertices.bin");
+    std::ifstream faceFileIn("triangles.bin");
 
     if (!vertexFileIn.is_open() || !faceFileIn.is_open() || !finalOutFile.is_open()) {
         std::cerr << "Error: Unable to open intermediate files." << std::endl;
@@ -531,8 +541,8 @@ void convertOBJSoupToOBJ(const std::string &inputFilename, const std::string &ou
     finalOutFile.close();
 
     // Deleting temporary files
-    std::remove("vertices.tmp");
-    std::remove("triangles.tmp");
+    std::remove("vertices.bin");
+    std::remove("triangles.bin");
 
     std::chrono::duration<double> duration = std::chrono::high_resolution_clock::now() - start;
     std::cout << "Conversion completed in " << duration.count() << " seconds. "
@@ -645,6 +655,14 @@ int processPLYFile(const std::string &plyFilename, const std::string &tempVertex
             plyFile.read(reinterpret_cast<char*>(&x), sizeof(float));
             plyFile.read(reinterpret_cast<char*>(&y), sizeof(float));
             plyFile.read(reinterpret_cast<char*>(&z), sizeof(float));
+
+            // If the file is big-endian, we need to swap the bytes
+            if (header.format == "binary_big_endian") {
+                x = swapFloat(x);
+                y = swapFloat(y);
+                z = swapFloat(z);
+            }
+
             Vertex v { x, y, z };
             vertexOut.write(reinterpret_cast<const char*>(&v), sizeof(Vertex));
         }
@@ -655,9 +673,15 @@ int processPLYFile(const std::string &plyFilename, const std::string &tempVertex
             plyFile.read(reinterpret_cast<char*>(&count), sizeof(unsigned char));
             std::vector<int> indices(count);
             for (int j = 0; j < count; j++) {
-                int idx;
-                plyFile.read(reinterpret_cast<char*>(&idx), sizeof(int));
-                indices[j] = idx;
+                int index;
+                plyFile.read(reinterpret_cast<char*>(&index), sizeof(int));
+
+                // If the file is big-endian, we need to swap the bytes
+                if (header.format == "binary_big_endian") {
+                    index = static_cast<int>(swapUInt32(static_cast<uint32_t>(index)));
+                }
+
+                indices[j] = index;
             }
             if (count == 3) {
                 TriangleIndices tri { indices[0] + 1, indices[1] + 1, indices[2] + 1 };

@@ -19,6 +19,9 @@ int main(int argc, char **argv) {
     // Apply ImGui style
     polyscope::options::configureImGuiStyleCallback = configureImGuiStyle;
 
+    // Remove maxFPS option (if set, the limit leads to abusively high CPU usage)
+    polyscope::options::maxFPS = -1;
+
     // Register user callback for UI
     polyscope::state::userCallback = [&]() {
         handleFileSelection(filename, fileDialog);

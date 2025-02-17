@@ -3,62 +3,23 @@
 
 #include <string>
 
+#include "mesh_conversion.h"
+#include "structures.h"
+
 // Maximum number of triangles loaded in memory to sort a run.
 #define CHUNK_SIZE 1000000
 
-// ---------------- Basic Structures ----------------
 
 /**
- * @brief Represents a 3D vertex.
+ * @brief Exports a binary OBJSoup file to a well-formatted text file.
+ *
+ * This function reads a binary OBJSoup file and writes its contents to a text file
+ *
+ * @param inputFilename Input binary OBJSoup file path.
+ * @param outputFilename Output text file path.
+ * @param faceCount Number of faces in the OBJSoup file.
  */
-struct Vertex {
-    double x, y, z;
-    [[nodiscard]] std::string toString() const {
-        std::ostringstream oss;
-        oss << std::fixed << std::setprecision(6) << x << " " << y << " " << z;
-        return oss.str();
-    }
-};
-
-/**
- * @brief Represents a triangle defined by three vertex indices.
- */
-struct TriangleIndices {
-    int v1, v2, v3;
-};
-
-/**
- * @brief Represents a triangle after dereferencing the first vertex.
- */
-struct Triangle_Pass1 {
-    Vertex v1;
-    int v2, v3;
-};
-
-/**
- * @brief Represents a triangle after dereferencing the second vertex.
- */
-struct Triangle_Pass2 {
-    Vertex v1, v2;
-    int v3;
-};
-
-/**
- * @brief Represents a triangle with all vertices dereferenced.
- */
-struct TriangleCoordinates {
-    Vertex v1, v2, v3;
-};
-
-/**
- * @brief Represents a header for a PLY file.
- */
-struct PLYHeader {
-    std::string format; // "ascii", "binary_little_endian" or "binary_big_endian"
-    int vertexCount;
-    int faceCount;
-    std::streampos headerEndPos;
-};
+void exportBinaryOBJSoupToText(const std::string &inputFilename, const std::string &outputFilename, int faceCount);
 
 // ---------------- Conversion Functions ----------------
 
@@ -68,14 +29,12 @@ struct PLYHeader {
  * The function reads the OBJ file, writes the vertices to a binary file and
  * the triangle indices to another binary file. It then performs external sorting
  * on the triangles and dereferences the indices to produce the final output.
+ * If the output file ends with ".bin", the binary file is kept, otherwise it is converted to text. (costly)
  *
  * @param objFilename Input OBJ file path.
  * @param outputFilename Output OBJSoup file path.
- * @param tempVertexFile Path for temporary binary vertex file.
- * @param tempTriangleIndicesFile Path for temporary binary triangle file.
  */
-void convertOBJtoOBJSoup(const std::string &objFilename, const std::string &outputFilename,
-                         const std::string &tempVertexFile, const std::string &tempTriangleIndicesFile);
+void convertOBJtoOBJSoup(const std::string &objFilename, const std::string &outputFilename);
 
 /**
  * @brief Converts a PLY file to an OBJSoup format.
@@ -83,29 +42,72 @@ void convertOBJtoOBJSoup(const std::string &objFilename, const std::string &outp
  * The function reads the PLY file, writes the vertices to a binary file and
  * the triangle indices to another binary file. It then performs external sorting
  * on the triangles and dereferences the indices to produce the final output.
+ * If the output file ends with ".bin", the binary file is kept, otherwise it is converted to text. (costly)
  *
  * @param plyFilename Input PLY file path.
  * @param outputFilename Output OBJSoup file path.
- * @param tempVertexFile Path for temporary binary vertex file.
- * @param tempTriangleIndicesFile Path for temporary binary triangle file.
  */
-void convertPLYtoOBJSoup(const std::string &plyFilename, const std::string &outputFilename,
-                         const std::string &tempVertexFile, const std::string &tempTriangleIndicesFile);
+void convertPLYtoOBJSoup(const std::string &plyFilename, const std::string &outputFilename);
+
+/**
+ * @brief Parses the header of a PLY file to extract the number of vertices and faces.
+ *
+ * This function reads the header of a PLY file and extracts the number of vertices and faces
+ * as well as the format of the file (ascii, binary_little_endian or binary_big_endian).
+ *
+ * @param in Input stream of the PLY file.
+ * @param header PLYHeader structure to store the extracted information.
+ * @return True if the header was successfully parsed, false otherwise.
+ */
+bool parsePLYHeader(std::istream &in, PLYHeader &header);
+
+/**
+ * @brief Processes a PLY file and writes the vertices and faces to temporary binary files.
+ *
+ * This function reads a PLY file and writes the vertex coordinates to a binary file and the
+ * triangle indices to another binary file. The binary files are then used for further processing.
+ *
+ * @param plyFilename Input PLY file path.
+ * @param tempVertexFile Path for a temporary file for vertices.
+ * @param tempTriangleIndicesFile Path for a temporary file for triangle indices.
+ * @return The number of faces in the PLY file.
+ */
+int processPLYFile(const std::string &plyFilename, const std::string &tempVertexFile,
+                   const std::string &tempTriangleIndicesFile);
 
 /**
  * @brief Converts an OBJSoup file back to an OBJ file.
  *
- * This function converts an OBJSoup file (where each face is defined by three vertex
- * coordinates) back into an OBJ file that contains a unique vertex list and face definitions
- * referencing those vertices. The processing is performed in an out-of-core fashion.
+ * This function converts an OBJSoup file (binary or text)back into an OBJ file.
+ * The processing is performed in an out-of-core fashion.
  *
  * @param inputFilename Input OBJSoup file path.
  * @param outputFilename Output OBJ file path.
- * @param tempVertexFile Path for a temporary file for vertices.
- * @param tempFaceFile Path for a temporary file for face definitions.
- * @param bufferSize The size of the buffer used for reading (in bytes).
  */
-void convertOBJSoupToOBJ(const std::string &inputFilename, const std::string &outputFilename,
-                         const std::string &tempVertexFile, const std::string &tempFaceFile, size_t bufferSize = 1024 * 1024 * 2);
+void convertOBJSoupToOBJ(const std::string &inputFilename, const std::string &outputFilename);
+
+/**
+ * @brief Processes a binary file and writes the vertices and faces to text files.
+ *
+ * This function reads a binary file containing triangle coordinates and writes the vertex coordinates
+ * and face indices to separate text files.
+ *
+ * @param file Input binary file stream.
+ * @param vertexFile Output text file stream for vertices.
+ * @param faceFile Output text file stream for faces.
+ */
+void processBinary(std::ifstream &file, std::ofstream &vertexFile, std::ofstream &faceFile);
+
+/**
+ * @brief Processes an ASCII file and writes the vertices and faces to text files.
+ *
+ * This function reads an ASCII file containing triangle coordinates and writes the vertex coordinates
+ * and face indices to separate text files.
+ *
+ * @param file Input ASCII file stream.
+ * @param vertexFile Output text file stream for vertices.
+ * @param faceFile Output text file stream for faces.
+ */
+void processASCII(std::ifstream &file, std::ofstream &vertexFile, std::ofstream &faceFile);
 
 #endif // CONVERSION_H

@@ -105,13 +105,28 @@ void conversionInfoPopup(char* filename, ImGui::FileBrowser& fileDialog) {
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 2);
 
         if (ImGui::Button("Yes", ImVec2(120, 0))) {
+            const std::string newFilename = std::string(filename).substr(0, std::string(filename).find_last_of('.')) + ".bin";
+
+            // Perform the conversion
+            if (filename[std::strlen(filename) - 1] == 'j') {
+                convertOBJtoOBJSoup(filename, newFilename);
+            } else {
+                convertPLYtoOBJSoup(filename, newFilename);
+            }
+
+            // Close the popup and clear the selected file
+            ImGui::CloseCurrentPopup();
+            fileDialog.ClearSelected();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Yes (Text Version)", ImVec2(150, 0))) {
             const std::string newFilename = std::string(filename).substr(0, std::string(filename).find_last_of('.')) + ".objs";
 
             // Perform the conversion
             if (filename[std::strlen(filename) - 1] == 'j') {
-                convertOBJtoOBJSoup(filename, newFilename, "vertex.tmp", "triangle.tmp");
+                convertOBJtoOBJSoup(filename, newFilename);
             } else {
-                convertPLYtoOBJSoup(filename, newFilename, "vertex.tmp", "triangle.tmp");
+                convertPLYtoOBJSoup(filename, newFilename);
             }
 
             // Close the popup and clear the selected file

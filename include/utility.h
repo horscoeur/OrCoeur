@@ -1,6 +1,12 @@
 #ifndef UTILITY_H
 #define UTILITY_H
 
+#ifdef DEBUG
+    #define DEBUG_LOG(msg) std::cout << msg << std::endl;
+#else
+    #define DEBUG_LOG(msg)
+#endif
+
 #include <cstdint>
 
 // Utility function to swap the byte order (for big endian)

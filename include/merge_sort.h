@@ -1,7 +1,11 @@
 #ifndef MERGE_SORT_H
 #define MERGE_SORT_H
 
+#include <algorithm>
+#include <fstream>
+#include <iostream>
 #include <string>
+#include <vector>
 
 // Maximum number of triangles loaded in memory to sort a run. (1 triangle = 12 bytes)
 #define CHUNK_SIZE 1000000 // 12 MB

@@ -1,158 +1,13 @@
+#include "dereference_passes.h"
+#include "structures.h"
+#include "utility.h"
+#include "mesh_conversion.h"
+
 #include <chrono>
 #include <fstream>
 #include <iostream>
 #include <vector>
 
-#include "mesh_conversion.h"
-#include "merge_sort.h"
-#include "structures.h"
-#include "utility.h"
-
-
-// Specialized external sort functions for each type:
-
-// To sort triangles by the first index (v1)
-void externalMergeSortTrianglesIndices(const std::string &inputFile, const std::string &outputFile) {
-    externalMergeSort<TriangleIndices>(inputFile, outputFile, [](const TriangleIndices &a, const TriangleIndices &b) {
-        return a.v1 < b.v1;
-    });
-}
-
-// To sort records from pass 1 by the second index (v2)
-void externalMergeSortTrianglesPass1(const std::string &inputFile, const std::string &outputFile) {
-    externalMergeSort<Triangle_Pass1>(inputFile, outputFile, [](const Triangle_Pass1 &a, const Triangle_Pass1 &b) {
-        return a.v2 < b.v2;
-    });
-}
-
-// To sort records from pass 2 by the third index (v3)
-void externalMergeSortTrianglesPass2(const std::string &inputFile, const std::string &outputFile) {
-    externalMergeSort<Triangle_Pass2>(inputFile, outputFile, [](const Triangle_Pass2 &a, const Triangle_Pass2 &b) {
-        return a.v3 < b.v3;
-    });
-}
-
-// ----- Dereferencing passes using synchronized scanning -----
-// Each pass reads the sorted file on the target index and the vertex file sequentially.
-
-// Pass 1: Replace v1 with the coordinate
-void dereferencePass1(const std::string &triangleIndexFile, const std::string &vertexFile, const std::string &outputFile) {
-    // External sort on the v1 field
-    externalMergeSortTrianglesIndices(triangleIndexFile, "sorted_by_v1.bin");
-    std::ifstream sortedTriangles("sorted_by_v1.bin", std::ios::binary);
-    std::ifstream vertices(vertexFile, std::ios::binary);
-    std::ofstream out(outputFile, std::ios::binary);
-
-    TriangleIndices face{};
-    Vertex currentVertex{};
-    int currentIndex = 1; // OBJ indices start at 1
-
-    if (!vertices.read(reinterpret_cast<char*>(&currentVertex), sizeof(Vertex))) {
-        std::cerr << "Error: Unable to read the first vertex (pass1)." << std::endl;
-        std::remove("sorted_by_v1.bin");
-        return;
-    }
-
-    while (sortedTriangles.read(reinterpret_cast<char*>(&face), sizeof(TriangleIndices))) {
-        // Advance in the vertices until the vertex corresponding to tri.v1 is found
-        while (currentIndex < face.v1) {
-            if (!vertices.read(reinterpret_cast<char*>(&currentVertex), sizeof(Vertex))) {
-                std::cerr << "Error: Index " << face.v1 << " not found in the vertex file." << std::endl;
-                std::remove("sorted_by_v1.bin");
-                return;
-            }
-            currentIndex++;
-        }
-        // Write a Triangle_Pass1 record with the dereferenced v1
-        Triangle_Pass1 rec{};
-        rec.v1 = currentVertex;
-        rec.v2 = face.v2;
-        rec.v3 = face.v3;
-        out.write(reinterpret_cast<char*>(&rec), sizeof(Triangle_Pass1));
-    }
-    sortedTriangles.close();
-    vertices.close();
-    out.close();
-    std::remove("sorted_by_v1.bin");
-}
-
-// Pass 2: Replace v2 with its coordinate
-void dereferencePass2(const std::string &inputFile, const std::string &vertexFile, const std::string &outputFile) {
-    // inputFile contains Triangle_Pass1 records.
-    externalMergeSortTrianglesPass1(inputFile, "sorted_by_v2.bin");
-    std::ifstream sortedTriangles("sorted_by_v2.bin", std::ios::binary);
-    std::ifstream vertices(vertexFile, std::ios::binary);
-    std::ofstream out(outputFile, std::ios::binary);
-
-    Triangle_Pass1 recIn{};
-    Vertex currentVertex{};
-    int currentIndex = 1;
-
-    if (!vertices.read(reinterpret_cast<char*>(&currentVertex), sizeof(Vertex))) {
-        std::cerr << "Error: Unable to read the first vertex (pass2)." << std::endl;
-        std::remove("sorted_by_v2.bin");
-        return;
-    }
-
-    while (sortedTriangles.read(reinterpret_cast<char*>(&recIn), sizeof(Triangle_Pass1))) {
-        while (currentIndex < recIn.v2) {
-            if (!vertices.read(reinterpret_cast<char*>(&currentVertex), sizeof(Vertex))) {
-                std::cerr << "Error: Index " << recIn.v2 << " not found (pass2)." << std::endl;
-                std::remove("sorted_by_v2.bin");
-                return;
-            }
-            currentIndex++;
-        }
-        Triangle_Pass2 recOut{};
-        recOut.v1 = recIn.v1;
-        recOut.v2 = currentVertex;
-        recOut.v3 = recIn.v3;
-        out.write(reinterpret_cast<char*>(&recOut), sizeof(Triangle_Pass2));
-    }
-    sortedTriangles.close();
-    vertices.close();
-    out.close();
-    std::remove("sorted_by_v2.bin");
-}
-
-// Pass 3: Replace v3 with its coordinate
-void dereferencePass3(const std::string &inputFile, const std::string &vertexFile, const std::string &outputFile) {
-    // inputFile contains Triangle_Pass2 records.
-    externalMergeSortTrianglesPass2(inputFile, "sorted_by_v3.bin");
-    std::ifstream sortedTriangles("sorted_by_v3.bin", std::ios::binary);
-    std::ifstream vertices(vertexFile, std::ios::binary);
-    std::ofstream out(outputFile, std::ios::binary);
-
-    Triangle_Pass2 recIn{};
-    Vertex currentVertex{};
-    int currentIndex = 1;
-
-    if (!vertices.read(reinterpret_cast<char*>(&currentVertex), sizeof(Vertex))) {
-        std::cerr << "Error: Unable to read the first vertex (pass3)." << std::endl;
-        std::remove("sorted_by_v3.bin");
-        return;
-    }
-
-    while (sortedTriangles.read(reinterpret_cast<char*>(&recIn), sizeof(Triangle_Pass2))) {
-        while (currentIndex < recIn.v3) {
-            if (!vertices.read(reinterpret_cast<char*>(&currentVertex), sizeof(Vertex))) {
-                std::cerr << "Error: Index " << recIn.v3 << " not found (pass3)." << std::endl;
-                std::remove("sorted_by_v3.bin");
-                return;
-            }
-            currentIndex++;
-        }
-        TriangleCoordinates recOut{};
-        recOut.v1 = recIn.v1;
-        recOut.v2 = recIn.v2;
-        recOut.v3 = currentVertex;
-        out.write(reinterpret_cast<char*>(&recOut), sizeof(TriangleCoordinates));
-    }
-    sortedTriangles.close();
-    vertices.close();
-    out.close();
-    std::remove("sorted_by_v3.bin");
-}
 
 // ------------------- Exporting the final OBJSoup file -------------------
 // This function reads the final binary OBJSoup file and writes its contents to a text file.
@@ -222,11 +77,8 @@ void convertOBJtoOBJSoup(const std::string &objFilename, const std::string &outp
     triangleIndicesFile.close();
 
     // Phase 2: The 3 dereferencing passes
-    // Pass 1: Dereference v1
     dereferencePass1("triangles.bin", "vertices.bin", "triangles_pass1.bin");
-    // Pass 2: Dereference v2
     dereferencePass2("triangles_pass1.bin", "vertices.bin", "triangles_pass2.bin");
-    // Pass 3: Dereference v3
     dereferencePass3("triangles_pass2.bin", "vertices.bin", "triangles_final.bin");
 
     // Remove the existing output file if it exists

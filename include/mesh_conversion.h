@@ -1,10 +1,11 @@
 #ifndef CONVERSION_H
 #define CONVERSION_H
 
-#include <string>
-
 #include "mesh_conversion.h"
 #include "structures.h"
+
+#include <string>
+
 
 /**
  * @brief Exports a binary OBJSoup file to a well-formatted text file.

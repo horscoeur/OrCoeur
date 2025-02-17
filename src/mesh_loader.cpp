@@ -10,54 +10,55 @@
 
 bool extractVerticesAndFacesFromOBJ(const std::string &filename, std::vector<std::array<float, 3>> &vertices,
                                     std::vector<std::array<int, 3>> &faces) {
-    std::ifstream file(filename);
+    std::ifstream file(filename, std::ios::in | std::ios::binary);
     if (!file.is_open()) {
         std::cerr << "Error: Could not open file " << filename << ".\n";
         return false;
     }
 
+    vertices.reserve(100000);
+    faces.reserve(100000);
+
     std::string line;
     while (std::getline(file, line)) {
-        if (line.size() < 2) continue;
+        if (line.empty() || line[0] == '#') continue;
 
-        // Vertex extraction
-        if (line.substr(0, 2) == "v ") {
-            std::istringstream iss(line.substr(2));
+        // If the line starts with 'v', it is a vertex
+        if (line[0] == 'v' && line[1] == ' ') {
             float x, y, z;
-            if (!(iss >> x >> y >> z)) {
-                std::cerr << "Error: Could not parse vertex line: " << line << ".\n";
-                continue;
-            }
-            vertices.push_back({x, y, z});
+            char dummy;
+            std::istringstream iss(line);
+            iss >> dummy >> x >> y >> z;
+            vertices.emplace_back(std::array{x, y, z});
         }
 
-        // Face extraction
-        else if (line.substr(0, 2) == "f ") {
+        // If the line starts with 'f', it is a face
+        else if (line[0] == 'f' && line[1] == ' ') {
             std::istringstream iss(line.substr(2));
             std::vector<int> faceIndices;
             std::string token;
             while (iss >> token) {
-                // "v" or "v/vt/vn" format token: we take the first value
-                std::istringstream tokenStream(token);
-                std::string indexStr;
-                if (std::getline(tokenStream, indexStr, '/')) {
-                    int index = std::stoi(indexStr);
-                    // Conversion of 1-based index to 0-based index
-                    faceIndices.push_back(index - 1);
-                }
+                size_t pos = token.find('/');
+                int index = std::stoi(token.substr(0, pos)) - 1;
+                faceIndices.push_back(index);
             }
-            // If the face is already a triangle, we add it as is
+
+            // Triangulate the face if it has more than 3 vertices else add it as is
             if (faceIndices.size() == 3) {
-                faces.push_back({faceIndices[0], faceIndices[1], faceIndices[2]});
-            }
-            // Else, we triangulate the face (fan triangulation method)
-            else if (faceIndices.size() > 3) {
-                for (size_t i = 1; i < faceIndices.size() - 1; i++) {
-                    faces.push_back({faceIndices[0], faceIndices[i], faceIndices[i + 1]});
+                faces.emplace_back(std::array{faceIndices[0], faceIndices[1], faceIndices[2]});
+            } else {
+                // Fan triangulation
+                for (size_t i = 1; i < faceIndices.size() - 1; ++i) {
+                    faces.emplace_back(std::array{faceIndices[0], faceIndices[i], faceIndices[i + 1]});
                 }
             }
         }
     }
+
+    // Resize the vectors to fit the actual number of elements
+    vertices.resize(vertices.size());
+    faces.resize(faces.size());
+
     return true;
 }
 
@@ -70,14 +71,12 @@ bool extractVerticesAndFacesFromPLY(const std::string &filename, std::vector<std
     }
 
     std::string line;
-    bool isBinary = false;
-    bool isBigEndian = false;
-    int vertexCount = 0;
-    int faceCount = 0;
+    bool isBinary = false, isBigEndian = false;
+    int vertexCount = 0, faceCount = 0;
 
     // Reading the header (always in ASCII)
     while (std::getline(file, line)) {
-        if (line.substr(0, 6) == "format") {
+        if (line.starts_with("format")) {
             if (line.find("ascii") != std::string::npos) {
                 isBinary = false;
             } else if (line.find("binary_little_endian") != std::string::npos) {
@@ -87,97 +86,91 @@ bool extractVerticesAndFacesFromPLY(const std::string &filename, std::vector<std
                 isBinary = true;
                 isBigEndian = true;
             }
-        } else if (line.substr(0, 14) == "element vertex") {
-            std::istringstream iss(line);
-            std::string elem, vertexStr;
-            iss >> elem >> vertexStr >> vertexCount;
-        } else if (line.substr(0, 12) == "element face") {
-            std::istringstream iss(line);
-            std::string elem, faceStr;
-            iss >> elem >> faceStr >> faceCount;
+        } else if (line.starts_with("element vertex")) {
+            vertexCount = std::stoi(line.substr(15));  // "element vertex X"
+        } else if (line.starts_with("element face")) {
+            faceCount = std::stoi(line.substr(13));  // "element face X"
         } else if (line == "end_header") {
             break;
         }
     }
 
+    // Reserve memory for the vertices and faces
+    vertices.reserve(vertexCount);
+    faces.reserve(faceCount);
+
     // Reading vertices
     if (!isBinary) {
-        // ASCII mode
         for (int i = 0; i < vertexCount; i++) {
             std::getline(file, line);
-            std::istringstream iss(line);
-            float x, y, z;
-            if (!(iss >> x >> y >> z)) {
-                std::cerr << "Error reading a vertex.\n";
-                continue;
-            }
-            vertices.push_back({x, y, z});
+            const char *vertex = line.c_str();
+            char *end;
+            float x = std::strtof(vertex, &end);
+            float y = std::strtof(end, &end);
+            float z = std::strtof(end, nullptr);
+            vertices.emplace_back(std::array{x, y, z});
         }
     } else {
-        // Binary mode (assuming coordinates are stored as floats)
+        // Binary Mode
+        std::vector<char> buffer(vertexCount * sizeof(float) * 3);
+        file.read(buffer.data(), buffer.size());
+        auto *data = reinterpret_cast<float *>(buffer.data());
         for (int i = 0; i < vertexCount; i++) {
-            float coords[3];
-            file.read(reinterpret_cast<char *>(coords), sizeof(float) * 3);
+            float x = data[i * 3], y = data[i * 3 + 1], z = data[i * 3 + 2];
             if (isBigEndian) {
-                for (int j = 0; j < 3; j++) {
-                    uint32_t temp = *reinterpret_cast<uint32_t *>(&coords[j]);
-                    temp = swapUInt32(temp);
-                    coords[j] = *reinterpret_cast<float *>(&temp);
-                }
+                x = swapFloat(x);
+                y = swapFloat(y);
+                z = swapFloat(z);
             }
-            vertices.push_back({coords[0], coords[1], coords[2]});
+            vertices.emplace_back(std::array{x, y, z});
         }
     }
 
     // Reading faces
     if (!isBinary) {
-        // ASCII mode
         for (int i = 0; i < faceCount; i++) {
             std::getline(file, line);
             std::istringstream iss(line);
             int vertexPerFace;
-            if (!(iss >> vertexPerFace)) {
-                std::cerr << "Error reading a face.\n";
-                continue;
-            }
+            iss >> vertexPerFace;
             std::vector<int> indices(vertexPerFace);
             for (int j = 0; j < vertexPerFace; j++) {
                 iss >> indices[j];
             }
+
+            // Triangulate the face if it has more than 3 vertices else add it as is
             if (vertexPerFace == 3) {
-                faces.push_back({indices[0], indices[1], indices[2]});
-            } else if (vertexPerFace > 3) {
-                // Triangulation (fan method)
+                faces.emplace_back(std::array{indices[0], indices[1], indices[2]});
+            } else {
                 for (int j = 1; j < vertexPerFace - 1; j++) {
-                    faces.push_back({indices[0], indices[j], indices[j + 1]});
+                    faces.emplace_back(std::array{indices[0], indices[j], indices[j + 1]});
                 }
             }
         }
     } else {
-        // Binary mode
+        // Binary Mode
         for (int i = 0; i < faceCount; i++) {
             uint8_t vertexPerFace;
             file.read(reinterpret_cast<char *>(&vertexPerFace), sizeof(uint8_t));
             if (vertexPerFace < 3) {
-                // If the face has less than 3 vertices, ignore it
                 file.seekg(vertexPerFace * sizeof(int), std::ios::cur);
                 continue;
             }
             std::vector<int> indices(vertexPerFace);
-            for (int j = 0; j < vertexPerFace; j++) {
-                int index;
-                file.read(reinterpret_cast<char *>(&index), sizeof(int));
-                if (isBigEndian) {
+            file.read(reinterpret_cast<char *>(indices.data()), vertexPerFace * sizeof(int));
+
+            // Swap the byte order if the file is big endian
+            if (isBigEndian) {
+                for (int &index : indices) {
                     index = static_cast<int>(swapUInt32(static_cast<uint32_t>(index)));
                 }
-                indices[j] = index;
             }
+
             if (vertexPerFace == 3) {
-                faces.push_back({indices[0], indices[1], indices[2]});
-            } else if (vertexPerFace > 3) {
-                // Triangulation
+                faces.emplace_back(std::array{indices[0], indices[1], indices[2]});
+            } else {
                 for (int j = 1; j < vertexPerFace - 1; j++) {
-                    faces.push_back({indices[0], indices[j], indices[j + 1]});
+                    faces.emplace_back(std::array{indices[0], indices[j], indices[j + 1]});
                 }
             }
         }

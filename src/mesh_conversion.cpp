@@ -4,106 +4,10 @@
 #include <vector>
 
 #include "mesh_conversion.h"
+#include "merge_sort.h"
 #include "structures.h"
 #include "utility.h"
 
-
-// ---------------- Operator Overloads ----------------
-
-bool operator<(const TriangleIndices &a, const TriangleIndices &b) {
-    if (a.v1 != b.v1) return a.v1 < b.v1;
-    if (a.v2 != b.v2) return a.v2 < b.v2;
-    return a.v3 < b.v3;
-}
-
-// ----- Generic external sort function -----
-// Reads the input file in chunks, sorts each chunk in RAM,
-// writes sorted "runs", then performs a k-way merge.
-template<typename T, typename Comparator>
-void externalMergeSort(const std::string &inputFile, const std::string &outputFile, Comparator comp) {
-    // Phase 1: Create sorted runs
-    std::ifstream in(inputFile, std::ios::binary);
-    if (!in) {
-        std::cerr << "Error: Unable to open " << inputFile << std::endl;
-        return;
-    }
-    std::vector<std::string> runFiles;
-    int runCount = 0;
-
-    while (true) {
-        std::vector<T> buffer;
-        buffer.resize(CHUNK_SIZE);
-        int count = 0;
-        while (count < CHUNK_SIZE && in.read(reinterpret_cast<char *>(&buffer[count]), sizeof(T))) {
-            count++;
-        }
-        if (count == 0) break;
-        buffer.resize(count);
-        std::sort(buffer.begin(), buffer.end(), comp);
-        std::string runFileName = "run_" + std::to_string(runCount) + ".bin";
-        std::ofstream runFile(runFileName, std::ios::binary);
-        if (!runFile) {
-            std::cerr << "Error: Unable to write " << runFileName << std::endl;
-            return;
-        }
-        runFile.write(reinterpret_cast<char *>(buffer.data()), count * sizeof(T));
-        runFile.close();
-        runFiles.push_back(runFileName);
-        runCount++;
-        if (in.eof()) break;
-    }
-    in.close();
-
-    // Phase 2: k-way merge using a heap
-    struct HeapNode {
-        T record;
-        int runIndex; // index of the run in runFiles
-    };
-    auto heapComparator = [comp](const HeapNode &a, const HeapNode &b) {
-        return comp(b.record, a.record); // for a min-heap
-    };
-    std::vector<HeapNode> heap;
-
-    // Open all run files for reading
-    std::vector<std::ifstream *> runStreams;
-    for (size_t i = 0; i < runFiles.size(); i++) {
-        auto *stream = new std::ifstream(runFiles[i], std::ios::binary);
-        if (!stream->is_open()) {
-            std::cerr << "Error: Unable to open " << runFiles[i] << std::endl;
-            return;
-        }
-        runStreams.push_back(stream);
-        T rec{};
-        if (stream->read(reinterpret_cast<char *>(&rec), sizeof(T))) {
-            heap.push_back({rec, static_cast<int>(i)});
-        }
-    }
-    std::ofstream out(outputFile, std::ios::binary);
-    if (!out) {
-        std::cerr << "Error: Unable to open " << outputFile << std::endl;
-        return;
-    }
-    while (!heap.empty()) {
-        std::pop_heap(heap.begin(), heap.end(), heapComparator);
-        HeapNode node = heap.back();
-        heap.pop_back();
-        out.write(reinterpret_cast<char*>(&node.record), sizeof(T));
-        int idx = node.runIndex;
-        T rec{};
-        if (runStreams[idx]->read(reinterpret_cast<char*>(&rec), sizeof(T))) {
-            heap.push_back({rec, idx});
-            std::push_heap(heap.begin(), heap.end(), heapComparator);
-        }
-    }
-    out.close();
-
-    // Close and clean up streams and delete temporary files
-    for (size_t i = 0; i < runStreams.size(); i++) {
-        runStreams[i]->close();
-        delete runStreams[i];
-        std::remove(runFiles[i].c_str());
-    }
-}
 
 // Specialized external sort functions for each type:
 

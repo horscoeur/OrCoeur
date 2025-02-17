@@ -6,10 +6,6 @@
 #include "mesh_conversion.h"
 #include "structures.h"
 
-// Maximum number of triangles loaded in memory to sort a run.
-#define CHUNK_SIZE 1000000
-
-
 /**
  * @brief Exports a binary OBJSoup file to a well-formatted text file.
  *

@@ -23,6 +23,15 @@ void handleFileSelection(char* filename, ImGui::FileBrowser& fileDialog);
  */
 void conversionInfoPopup(char* filename, ImGui::FileBrowser& fileDialog);
 
+
+/**
+ * @brief Displays the mesh cutting popup window.
+ * @param filename The selected file path.
+ * @param resolution The resolution of the cutting.
+ */
+void cuttingInfoPopup(char* filename, int &resolution);
+
+
 /**
  * @brief Loads a mesh from the given file path.
  * @param filename The path to the mesh file.

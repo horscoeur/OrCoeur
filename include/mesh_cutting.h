@@ -42,8 +42,9 @@ float scalarTripleProduct(const Vertex& a, const Vertex& b, const Vertex& c);
  * @param outputFilenamePlaneEquation Output text file path for the plane equation.
  * @param outputFilenameTriangleCluster Output text file path for the triangle clusters.
  * @param resolution Resolution of the cutting.
+ * @param cutTheMesh If true, the mesh will be cut, otherwise only the grid will be displayed.
  * @return True if the mesh was successfully cut, false otherwise.
  */
-bool meshCutting(const std::string &filename, std::string &outputFilenamePlaneEquation, std::string &outputFilenameTriangleCluster, int resolution);
+bool meshCutting(const std::string &filename, std::string &outputFilenamePlaneEquation, std::string &outputFilenameTriangleCluster, int resolution, bool cutTheMesh = true);
 
 #endif //MESH_CUTTING_H

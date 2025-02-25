@@ -12,6 +12,7 @@ int main(int argc, char **argv) {
 
     // File selection dialog
     char filename[2048] = "";
+    int resolution = 5;
     ImGui::FileBrowser fileDialog;
     fileDialog.SetTitle("Open a mesh file");
     fileDialog.SetTypeFilters({".obj", ".ply"});
@@ -26,6 +27,7 @@ int main(int argc, char **argv) {
     polyscope::state::userCallback = [&]() {
         handleFileSelection(filename, fileDialog);
         conversionInfoPopup(filename, fileDialog);
+        cuttingInfoPopup(filename, resolution);
     };
 
     // Show Polyscope GUI

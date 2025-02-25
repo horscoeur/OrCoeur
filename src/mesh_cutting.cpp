@@ -18,7 +18,7 @@ float scalarTripleProduct(const Vertex& a, const Vertex& b, const Vertex& c) {
            a.z * (b.x * c.y - b.y * c.x);
 }
 
-bool meshCutting(const std::string &inFilenameBinary, std::string &outputFilenamePlaneEquation, std::string &outputFilenameTriangleCluster, int resolution){
+bool meshCutting(const std::string &inFilenameBinary, std::string &outputFilenamePlaneEquation, std::string &outputFilenameTriangleCluster, int resolution, bool cutTheMesh) {
     // Open the input file
     std::ifstream file(inFilenameBinary, std::ios::binary);
     if (!file.is_open()) {
@@ -26,7 +26,7 @@ bool meshCutting(const std::string &inFilenameBinary, std::string &outputFilenam
         return false;
     }
 
-    // remove the header
+    // Pass the header
     std::string line;
     bool header = true;
     while (header && std::getline(file, line)) {
@@ -35,12 +35,12 @@ bool meshCutting(const std::string &inFilenameBinary, std::string &outputFilenam
         }
     }
 
-    // Vérifier la position après l'en-tête
+    // Get the position of the end of the header
     std::streampos pos = file.tellg();
-
     if (pos == -1) {
-        std::cerr << "Erreur : Position invalide après l'en-tête !" << std::endl;
-        file.clear(); // Réinitialise les erreurs
+        std::cerr << "Error : Could not find the end of the header.\n";
+        file.close();
+        return false;
     }
 
 
@@ -49,6 +49,7 @@ bool meshCutting(const std::string &inFilenameBinary, std::string &outputFilenam
     std::ofstream triangleCluster(outputFilenameTriangleCluster);
     if (!planeEquation.is_open() || !triangleCluster.is_open()) {
         std::cerr << "Error: Could not open output files.\n";
+        file.close();
         return false;
     }
     // Create the grid and the face
@@ -70,6 +71,16 @@ bool meshCutting(const std::string &inFilenameBinary, std::string &outputFilenam
 
     grid.min = grid.min - Vertex(0.1,0.1,0.1);
     grid.max = grid.max + Vertex(0.1,0.1,0.1);
+
+    grid.displayGrid();
+
+    // If we only want to display the grid and not cut the mesh, close the files and return true
+    if (!cutTheMesh) {
+        file.close();
+        planeEquation.close();
+        triangleCluster.close();
+        return true;
+    }
 
     // Rewind the file after the header
     file.clear();

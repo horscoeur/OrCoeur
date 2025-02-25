@@ -5,6 +5,7 @@
 #include <cstring>
 
 #include "mesh_conversion.h"
+#include "mesh_cutting.h"
 #include "polyscope/surface_mesh.h"
 
 void configureImGuiStyle() {
@@ -80,6 +81,18 @@ void handleFileSelection(char* filename, ImGui::FileBrowser& fileDialog) {
             }
         }
     }
+    ImGui::SameLine();
+    if (ImGui::Button("Cut mesh")) {
+        // If a file is loaded
+        if (filename[0] != '\0') {
+            const std::string extension = std::string(filename).substr(std::string(filename).find_last_of('.'));
+            if (extension != ".obj" && extension != ".ply") {
+                std::cerr << "Error: Unsupported file format." << std::endl;
+            } else {
+                ImGui::OpenPopup("Mesh Cutting");
+            }
+        }
+    }
     ImGui::PopItemWidth();
 
     fileDialog.Display();
@@ -92,6 +105,53 @@ void handleFileSelection(char* filename, ImGui::FileBrowser& fileDialog) {
         loadMesh(filename, fileDialog.GetSelected().extension().string());
 
         fileDialog.ClearSelected();
+    }
+}
+
+void cuttingInfoPopup(char* filename, int &resolution) {
+    if (ImGui::BeginPopupModal("Mesh Cutting", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::Text("The selected mesh will be cut into clusters.");
+        ImGui::Text("Would you like to proceed?");
+
+
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
+        ImGui::Separator();
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 2);
+
+        ImGui::InputInt("Resolution", &resolution);
+        ImGui::SameLine();
+        bool notCutTheMesh = false;
+        if (ImGui::Button("See Grid", ImVec2(120, 0))) {
+            notCutTheMesh = true;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Yes", ImVec2(120, 0)) || notCutTheMesh) {
+            //Add input field for resolution
+            const std::string newFilename = std::string(filename).substr(0, std::string(filename).find_last_of('.')) + ".bin";
+            // If file already exists pass to the next step
+            if (!std::ifstream(newFilename)){
+                // Perform the conversion
+                if (filename[std::strlen(filename) - 1] == 'j') {
+                    convertOBJtoOBJSoup(filename, newFilename);
+                } else {
+                    convertPLYtoOBJSoup(filename, newFilename);
+                }
+            }
+
+            std::string outputFilenamePlaneEquation = std::string(filename).substr(0, std::string(filename).find_last_of('.')) + "PlaneEquation.txt";
+            std::string outputFilenameTriangleCluster = std::string(filename).substr(0, std::string(filename).find_last_of('.')) + "TriangleCluster.txt";
+
+            // Perform the mesh cutting
+            meshCutting(newFilename, outputFilenamePlaneEquation, outputFilenameTriangleCluster, resolution, !notCutTheMesh);
+
+            // Close the popup
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("No", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
     }
 }
 

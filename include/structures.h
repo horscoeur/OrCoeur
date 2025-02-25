@@ -4,6 +4,10 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include <vector>
+#include "polyscope/polyscope.h"
+#include "polyscope/point_cloud.h"
+
 
 /**
  * @brief Represents a 3D vertex.
@@ -75,6 +79,31 @@ struct Grid {
     [[nodiscard]]
     int getIndex(const Vertex pos) const {
         return getIndex(getCellX(pos), getCellY(pos), getCellZ(pos));
+    }
+
+    void displayGrid() {
+        std::vector<Vertex> gridCenters;
+
+        // Loop through the grid and calculate the center of each cell
+        for (int i = 0; i < resolution; i++) {
+            for (int j = 0; j < resolution; j++) {
+                for (int k = 0; k < resolution; k++) {
+                    // Calculate the center of the cell
+                    float x = min.x + (i + 0.5f) * (max.x - min.x) / resolution;
+                    float y = min.y + (j + 0.5f) * (max.y - min.y) / resolution;
+                    float z = min.z + (k + 0.5f) * (max.z - min.z) / resolution;
+
+                    gridCenters.emplace_back(Vertex{x, y, z});
+                }
+            }
+        }
+        // Register the grid centers with Polyscope
+        std::vector<std::array<double, 3>> points;
+        for (const auto& v : gridCenters) {
+            points.push_back({v.x, v.y, v.z});
+        }
+        polyscope::registerPointCloud("Grid Centers", points);
+
     }
 };
 

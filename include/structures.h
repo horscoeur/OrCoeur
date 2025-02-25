@@ -15,6 +15,67 @@ struct Vertex {
         oss << std::fixed << std::setprecision(6) << x << " " << y << " " << z;
         return oss.str();
     }
+
+    // Operator overloads for vector addition
+    [[nodiscard]]
+    Vertex operator+(const Vertex &v) const {
+        return {x + v.x, y + v.y, z + v.z};
+    }
+    // Operator overloads for vector subtraction
+    [[nodiscard]]
+    Vertex operator-(const Vertex& v) const{
+        return {x-v.x, y-v.y, z-v.z};
+    }
+};
+
+struct Vertex4 {
+    float x, y, z, w;
+    [[nodiscard]] std::string toString() const {
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(10) << x << " " << y << " " << z << " " << w;
+        return oss.str();
+    }
+    // Constructor for the Vertex4 struct with Vertex
+    Vertex4(const Vertex &v) : x(v.x), y(v.y), z(v.z), w(0) {}
+};
+
+/**
+ * @brief Represents a grid cell.
+ */
+struct Grid {
+
+    explicit Grid(int resolution) : resolution(resolution), min(0), max(0) {}
+
+    Vertex min, max;
+    int resolution;
+
+    // getCellX, getCellY, getCellZ and getIndex functions
+    // are used to get the index of the cell in the grid
+
+    [[nodiscard]]
+    int getCellX(const Vertex pos) const {
+        return resolution * (pos.x - min.x) / (max.x - min.x);
+    }
+
+    [[nodiscard]]
+    int getCellY(const Vertex pos) const {
+        return resolution * (pos.y - min.y) / (max.y - min.y);
+    }
+
+    [[nodiscard]]
+    int getCellZ(const Vertex pos) const {
+        return resolution * (pos.z - min.z) / (max.z - min.z);
+    }
+
+    [[nodiscard]]
+    int getIndex(const int i, const int j, const int k) const {
+        return i * resolution * resolution + j * resolution + k;
+    }
+
+    [[nodiscard]]
+    int getIndex(const Vertex pos) const {
+        return getIndex(getCellX(pos), getCellY(pos), getCellZ(pos));
+    }
 };
 
 /**

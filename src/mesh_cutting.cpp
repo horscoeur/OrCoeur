@@ -9,7 +9,6 @@ Vertex crossProduct(const Vertex& a, const Vertex& b) {
     result.x = a.y * b.z - a.z * b.y;
     result.y = a.z * b.x - a.x * b.z;
     result.z = a.x * b.y - a.y * b.x;
-    std :: cout << "Cross Product: " << result.x << " " << result.y << " " << result.z << " Between " << a.x << " " << a.y << " " << a.z << " and " << b.x << " " << b.y << " " << b.z << std :: endl;
     return result;
 }
 
@@ -38,7 +37,6 @@ bool meshCutting(const std::string &inFilenameBinary, std::string &outputFilenam
 
     // Vérifier la position après l'en-tête
     std::streampos pos = file.tellg();
-    std::cout << "Position après l'en-tête: " << pos << std::endl;
 
     if (pos == -1) {
         std::cerr << "Erreur : Position invalide après l'en-tête !" << std::endl;

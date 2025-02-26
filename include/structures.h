@@ -32,17 +32,6 @@ struct Vertex {
     }
 };
 
-struct Vertex4 {
-    float x, y, z, w;
-    [[nodiscard]] std::string toString() const {
-        std::ostringstream oss;
-        oss << std::fixed << std::setprecision(10) << x << " " << y << " " << z << " " << w;
-        return oss.str();
-    }
-    // Constructor for the Vertex4 struct with Vertex
-    Vertex4(const Vertex &v) : x(v.x), y(v.y), z(v.z), w(0) {}
-};
-
 /**
  * @brief Represents a grid cell.
  */

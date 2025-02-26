@@ -1,22 +1,5 @@
 
 #include "mesh_cutting.h"
-#include <vector>
-
-#include "polyscope/point_cloud.h"
-
-Vertex crossProduct(const Vertex& a, const Vertex& b) {
-    Vertex result{};
-    result.x = a.y * b.z - a.z * b.y;
-    result.y = a.z * b.x - a.x * b.z;
-    result.z = a.x * b.y - a.y * b.x;
-    return result;
-}
-
-float scalarTripleProduct(const Vertex& a, const Vertex& b, const Vertex& c) {
-    return a.x * (b.y * c.z - b.z * c.y) -
-           a.y * (b.x * c.z - b.z * c.x) +
-           a.z * (b.x * c.y - b.y * c.x);
-}
 
 bool meshCutting(const std::string &inFilenameBinary, std::string &outputFilenamePlaneEquation, std::string &outputFilenameTriangleCluster, int resolution, bool cutTheMesh) {
     // Open the input file
@@ -72,10 +55,9 @@ bool meshCutting(const std::string &inFilenameBinary, std::string &outputFilenam
     grid.min = grid.min - Vertex(0.1,0.1,0.1);
     grid.max = grid.max + Vertex(0.1,0.1,0.1);
 
-    grid.displayGrid();
-
     // If we only want to display the grid and not cut the mesh, close the files and return true
     if (!cutTheMesh) {
+        grid.displayGrid();
         file.close();
         planeEquation.close();
         triangleCluster.close();
@@ -98,22 +80,21 @@ bool meshCutting(const std::string &inFilenameBinary, std::string &outputFilenam
         int v3Index = grid.getIndex(v3);
 
         // Compute the nt of the triangle
-        Vertex crossV1V2 = crossProduct(v1, v2);
-        Vertex crossV2V3 = crossProduct(v2, v3);
-        Vertex crossV3V1 = crossProduct(v3, v1);
-        float productScalar = scalarTripleProduct(v1, v2, v3);
-
-        Vertex4 nt = crossV1V2 + crossV2V3 + crossV3V1;
-        nt.w = -productScalar;
+        PlaneEquation nt = computePlaneEquation(face);
 
         // Write the plane equation to the output file for each vertex
-        planeEquation << v1Index << " " << nt.toString() << "\n";
-        planeEquation << v2Index << " " << nt.toString() << "\n";
-        planeEquation << v3Index << " " << nt.toString() << "\n";
+        planeEquation.write(reinterpret_cast<const char*>(&v1Index), sizeof(int));
+        planeEquation.write(reinterpret_cast<const char*>(&nt), sizeof(PlaneEquation));
+        planeEquation.write(reinterpret_cast<const char*>(&v2Index), sizeof(int));
+        planeEquation.write(reinterpret_cast<const char*>(&nt), sizeof(PlaneEquation));
+        planeEquation.write(reinterpret_cast<const char*>(&v3Index), sizeof(int));
+        planeEquation.write(reinterpret_cast<const char*>(&nt), sizeof(PlaneEquation));
 
         // Write the triangle to the output file only if each vertex is in a different cell
         if (v1Index != v2Index && v2Index != v3Index && v3Index != v1Index) {
-            triangleCluster << v1Index << " " << v2Index << " " << v3Index << "\n";
+            triangleCluster.write(reinterpret_cast<const char*>(&v1Index), sizeof(int));
+            triangleCluster.write(reinterpret_cast<const char*>(&v2Index), sizeof(int));
+            triangleCluster.write(reinterpret_cast<const char*>(&v3Index), sizeof(int));
         }
 
     }

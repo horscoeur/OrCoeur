@@ -138,8 +138,8 @@ void cuttingInfoPopup(char* filename, int &resolution) {
                 }
             }
 
-            std::string outputFilenamePlaneEquation = std::string(filename).substr(0, std::string(filename).find_last_of('.')) + "PlaneEquation.txt";
-            std::string outputFilenameTriangleCluster = std::string(filename).substr(0, std::string(filename).find_last_of('.')) + "TriangleCluster.txt";
+            std::string outputFilenamePlaneEquation = std::string(filename).substr(0, std::string(filename).find_last_of('.')) + "PlaneEquation.bin";
+            std::string outputFilenameTriangleCluster = std::string(filename).substr(0, std::string(filename).find_last_of('.')) + "TriangleCluster.bin";
 
             // Perform the mesh cutting
             meshCutting(newFilename, outputFilenamePlaneEquation, outputFilenameTriangleCluster, resolution, !notCutTheMesh);

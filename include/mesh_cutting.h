@@ -7,30 +7,9 @@
 #include <string>
 #include <float.h>
 #include <iostream>
-
-
-/**
- * @brief Computes the cross product of two vertices.
- *
- * This function computes the cross product of two vertices.
- *
- * @param a First vertex.
- * @param b Second vertex.
- * @return The cross product of the two vertices.
- */
-Vertex crossProduct(const Vertex& a, const Vertex& b);
-
-/**
- * @brief Computes the scalar triple product of three vertices.
- *
- * This function computes the scalar triple product of three vertices.
- *
- * @param a First vertex.
- * @param b Second vertex.
- * @param c Third vertex.
- * @return The scalar triple product of the three vertices.
- */
-float scalarTripleProduct(const Vertex& a, const Vertex& b, const Vertex& c);
+#include <vector>
+#include "quadrics.h"
+#include "polyscope/point_cloud.h"
 
 /**
  * @brief Cuts a mesh into clusters and writes his plane equation and triangle clusters to separate files.

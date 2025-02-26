@@ -66,10 +66,24 @@ void convertOBJtoOBJSoup(const std::string &objFilename, const std::string &outp
             iss >> v.x >> v.y >> v.z;
             vertexFile.write(reinterpret_cast<const char *>(&v), sizeof(Vertex));
         } else if (type == "f") {
-            TriangleIndices t{};
-            iss >> t.v1 >> t.v2 >> t.v3;
-            triangleIndicesFile.write(reinterpret_cast<const char *>(&t), sizeof(TriangleIndices));
-            faceCount++;
+            std::vector<int> indices;
+            std::string token;
+
+            // Extract all vertex indices of the face
+            while (iss >> token) {
+                int idx = std::stoi(token.substr(0, token.find('/')));
+                indices.push_back(idx);
+            }
+
+            // Fan triangulation: for a face with n vertices, create n-2 triangles
+            for (size_t i = 1; i < indices.size() - 1; ++i) {
+                TriangleIndices t{};
+                t.v1 = indices[0];      // first vertex of the face
+                t.v2 = indices[i];      // current vertex
+                t.v3 = indices[i + 1];  // next vertex
+                triangleIndicesFile.write(reinterpret_cast<const char *>(&t), sizeof(TriangleIndices));
+                faceCount++;
+            }
         }
     }
     objFile.close();

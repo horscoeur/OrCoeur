@@ -5,27 +5,8 @@
 #include <array>
 #include <vector>
 #include <cmath>
+#include <Eigen/Dense>
 
-/**
- * @brief Represents a plane equation in homogeneous coordinates.
- *
- * The plane is defined by the equation:
- *     a*x + b*y + c*z + d = 0,
- * where (a, b, c) is a normalized normal vector and d is the offset.
- */
-struct PlaneEquation {
-    float a, b, c, d;
-};
-
-/**
- * @brief Represents a quadric as a 4x4 matrix stored in a flat array.
- */
-struct Quadric {
-    std::array<float, 16> data{};
-
-    constexpr float& operator()(const int i, const int j) { return data[i * 4 + j]; }
-    constexpr const float& operator()(const int i, const int j) const { return data[i * 4 + j]; }
-};
 
 /**
  * @brief Computes the plane equation (homogeneous vector) for a given triangle.
@@ -87,6 +68,27 @@ inline Quadric computeQuadric(const TriangleCoordinates& triangle) {
 }
 
 /**
+ * @brief Computes the quadric matrix Q for a plane equation.
+ *
+ * The quadric matrix Q is computed from the homogeneous vector n̄ as:
+ * Q = n̄ * n̄^T.
+ *
+ * @param plane The plane equation for which to compute the quadric matrix.
+ * @return Quadric The computed 4x4 quadric matrix.
+ */
+inline Quadric computeQuadricPlaneEquation(const PlaneEquation& plane) {
+    const std::array n_bar = { plane.a, plane.b, plane.c, plane.d };
+
+    Quadric quadric;
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            quadric(i, j) = n_bar[i] * n_bar[j];
+        }
+    }
+    return quadric;
+}
+
+/**
  * @brief Evaluates the quadric error for a given point with respect to a quadric.
  *
  * The point is considered in homogeneous coordinates (x, y, z, 1) and the error is given by:
@@ -128,6 +130,22 @@ inline Quadric addQuadrics(const std::vector<Quadric>& quadrics) {
 }
 
 /**
+ * @brief Adds two quadric matrices element-wise.
+ *
+ * @param quadric The first quadric matrix.
+ * @param quadric2 The second quadric matrix.
+ * @return Quadric The sum of the two quadric matrices.
+ */
+inline Quadric addQuadric(Quadric & quadric, const Quadric & quadric2) {
+
+    for (int i = 0; i < 16; ++i) {
+        quadric.data[i] += quadric2.data[i];
+    }
+    
+    return quadric;
+}
+
+/**
  * @brief Evaluates the total error for a given point with respect to multiple quadric matrices.
  *
  * This function computes the sum of individual errors:
@@ -143,6 +161,49 @@ inline float evaluateTotalError(const std::vector<Quadric>& quadrics, const Vert
         totalError += evaluateError(Q, point);
     }
     return totalError;
+}
+
+
+/**
+ * @brief Finds the optimal point that minimizes the quadric error.
+ * 
+ * This function solves the linear system A*x = -b to find the point
+ * that minimizes the quadric error. If the system is not solvable,
+ * it returns the origin (0, 0, 0).
+ *
+ * @param quadric 4x4 quadric matrices.
+ * @return a Vertex that is the optimal vertex position for a given quadric matrix.
+ */
+
+ inline Vertex findOptimalVertex(const Quadric& quadric) {
+    // Extract the 3x3 upper-left submatrix A
+    Eigen::Matrix3f A;
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            A(i, j) = quadric(i, j); 
+        }
+    }
+    
+    // Extract the right side vector -b 
+    Eigen::Vector3f b;
+    b(0) = -quadric(0, 3);  
+    b(1) = -quadric(1, 3); 
+    b(2) = -quadric(2, 3);  
+    
+    // Try to solve the system A*x = b
+    Eigen::Vector3f result;
+    
+    // Check if matrix is invertible 
+    Eigen::FullPivLU<Eigen::Matrix3f> lu(A);
+    if (lu.isInvertible()) {
+        // Matrix is invertible, solve the system
+        result = A.fullPivLu().solve(b);
+        return {result(0), result(1), result(2)};
+    } else {
+        // Return the origin if the system is not solvable.
+        // TODO: Handle this case better.
+        return {0.0f, 0.0f, 0.0f};
+    }
 }
 
 #endif // QUADRIC_CALCULATOR_H

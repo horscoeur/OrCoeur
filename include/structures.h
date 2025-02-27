@@ -144,4 +144,34 @@ struct ORCOEURHeader {
     int faceCount;
 };
 
+/**
+ * @brief Represents a plane equation in homogeneous coordinates.
+ *
+ * The plane is defined by the equation:
+ *     a*x + b*y + c*z + d = 0,
+ * where (a, b, c) is a normalized normal vector and d is the offset.
+ */
+struct PlaneEquation {
+    float a, b, c, d;
+};
+
+/**
+ * @brief Represents a quadric as a 4x4 matrix stored in a flat array.
+ */
+struct Quadric {
+    std::array<float, 16> data{};
+
+    constexpr float& operator()(const int i, const int j) { return data[i * 4 + j]; }
+    constexpr const float& operator()(const int i, const int j) const { return data[i * 4 + j]; }
+};
+
+
+/**
+ * @brief Represents the grid index and the plane equation 
+ */
+struct GridPlaneEntry {
+    int gridIndex;
+    PlaneEquation planeEquation;
+};
+
 #endif // STRUCTURES_H

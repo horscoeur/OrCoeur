@@ -6,6 +6,7 @@
 
 #include "mesh_conversion.h"
 #include "mesh_cutting.h"
+#include "mesh_simplification.h"
 #include "polyscope/surface_mesh.h"
 
 void configureImGuiStyle() {
@@ -138,11 +139,35 @@ void cuttingInfoPopup(char* filename, int &resolution) {
                 }
             }
 
-            std::string outputFilenamePlaneEquation = std::string(filename).substr(0, std::string(filename).find_last_of('.')) + "PlaneEquation.bin";
-            std::string outputFilenameTriangleCluster = std::string(filename).substr(0, std::string(filename).find_last_of('.')) + "TriangleCluster.bin";
+            std::string file = std::string(filename).substr(0, std::string(filename).find_last_of('.'));
+
+            std::string outputFilenamePlaneEquation = file + "PlaneEquation.bin";
+            std::string outputFilenamePlaneEquationSorted = file + "PlaneEquationSorted.bin";
+            std::string outputFilenameTriangleCluster = file + "TriangleCluster.bin";
+            std::string outputFilenameRepresentatives = file + "Representatives.bin";
+            std::string outputFilenameSimplified = file + "Simplified.bin";
+            std::string outputFilenameSimplifiedObj = file + "Simplified.txt";
+            std::string outputFilenameOBJ = file + "Simplified.obj";
 
             // Perform the mesh cutting
             meshCutting(newFilename, outputFilenamePlaneEquation, outputFilenameTriangleCluster, resolution, !notCutTheMesh);
+
+            // Sort the plane equations by grid index
+            externalMergeSortGridPlaneEntry(outputFilenamePlaneEquation, outputFilenamePlaneEquationSorted);
+
+            // Compute the representative vertices
+            computeGridCellRepresentatives(outputFilenamePlaneEquationSorted,  outputFilenameRepresentatives);
+
+            // Generate the simplified mesh by replacing the grid cells with their representative vertices
+            int nbOfFaces = generateSimplifiedMeshBin(outputFilenameRepresentatives, outputFilenameTriangleCluster, outputFilenameSimplified);
+
+            // Convert the simplified mesh to text format
+            exportBinaryOBJSoupToText(outputFilenameSimplified, outputFilenameSimplifiedObj, nbOfFaces);
+
+            // Convert the simplified mesh to OBJ format
+
+            convertOBJSoupToOBJ(outputFilenameSimplifiedObj, outputFilenameOBJ);
+
 
             // Close the popup
             ImGui::CloseCurrentPopup();

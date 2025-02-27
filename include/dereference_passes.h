@@ -57,4 +57,11 @@ void dereferencePass3(const std::string &inputFile,
                       const std::string &vertexFile,
                       const std::string &outputFile);
 
+                      
+void externalMergeSortTrianglesIndices(const std::string &inputFile, const std::string &outputFile);
+void externalMergeSortTrianglesPass1(const std::string &inputFile, const std::string &outputFile);
+void externalMergeSortTrianglesPass2(const std::string &inputFile, const std::string &outputFile);
+
+
+
 #endif //DEREFERENCE_PASSES_H

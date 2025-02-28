@@ -152,22 +152,23 @@ void cuttingInfoPopup(char* filename, int &resolution) {
             // Perform the mesh cutting
             meshCutting(newFilename, outputFilenamePlaneEquation, outputFilenameTriangleCluster, resolution, !notCutTheMesh);
 
-            // Sort the plane equations by grid index
-            externalMergeSortGridPlaneEntry(outputFilenamePlaneEquation, outputFilenamePlaneEquationSorted);
+            if (!notCutTheMesh) {
+                // Sort the plane equations by grid index
+                externalMergeSortGridPlaneEntry(outputFilenamePlaneEquation, outputFilenamePlaneEquationSorted);
 
-            // Compute the representative vertices
-            computeGridCellRepresentatives(outputFilenamePlaneEquationSorted,  outputFilenameRepresentatives);
+                // Compute the representative vertices
+                computeGridCellRepresentatives(outputFilenamePlaneEquationSorted,  outputFilenameRepresentatives);
 
-            // Generate the simplified mesh by replacing the grid cells with their representative vertices
-            int nbOfFaces = generateSimplifiedMeshBin(outputFilenameRepresentatives, outputFilenameTriangleCluster, outputFilenameSimplified);
+                // Generate the simplified mesh by replacing the grid cells with their representative vertices
+                int nbOfFaces = generateSimplifiedMeshBin(outputFilenameRepresentatives, outputFilenameTriangleCluster, outputFilenameSimplified);
 
-            // Convert the simplified mesh to text format
-            exportBinaryOBJSoupToText(outputFilenameSimplified, outputFilenameSimplifiedObj, nbOfFaces);
+                // Convert the simplified mesh to text format
+                exportBinaryOBJSoupToText(outputFilenameSimplified, outputFilenameSimplifiedObj, nbOfFaces);
 
-            // Convert the simplified mesh to OBJ format
+                // Convert the simplified mesh to OBJ format
 
-            convertOBJSoupToOBJ(outputFilenameSimplifiedObj, outputFilenameOBJ);
-
+                convertOBJSoupToOBJ(outputFilenameSimplifiedObj, outputFilenameOBJ);
+            }
 
             // Close the popup
             ImGui::CloseCurrentPopup();

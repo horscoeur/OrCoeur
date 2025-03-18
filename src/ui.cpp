@@ -170,6 +170,14 @@ void cuttingInfoPopup(char* filename, int &resolution) {
                 convertOBJSoupToOBJ(outputFilenameSimplifiedObj, outputFilenameOBJ);
             }
 
+            remove(newFilename.c_str());
+            remove(outputFilenamePlaneEquation.c_str());
+            remove(outputFilenamePlaneEquationSorted.c_str());
+            remove(outputFilenameTriangleCluster.c_str());
+            remove(outputFilenameRepresentatives.c_str());
+            remove(outputFilenameSimplified.c_str());
+            remove(outputFilenameSimplifiedObj.c_str());
+
             // Close the popup
             ImGui::CloseCurrentPopup();
         }

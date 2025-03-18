@@ -25,7 +25,7 @@ bool computeGridCellRepresentatives(const std::string &inputFilenamePlaneEquatio
     int currentGridIndex = -1;
     Quadric currentQuadric;
 
-
+    // Read the plane equations file plane by plane and accumulate the quadrics for each grid cell
     while (filePlaneEquation.read(reinterpret_cast<char *>(&gridPlaneEntry), sizeof(GridPlaneEntry))) {
         if (currentGridIndex != gridPlaneEntry.gridIndex) {
 

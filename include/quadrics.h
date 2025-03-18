@@ -174,8 +174,7 @@ inline float evaluateTotalError(const std::vector<Quadric>& quadrics, const Vert
  * @param quadric 4x4 quadric matrices.
  * @return a Vertex that is the optimal vertex position for a given quadric matrix.
  */
-
- inline Vertex findOptimalVertex(const Quadric& quadric) {
+inline Vertex findOptimalVertex(const Quadric& quadric) {
     // Extract the 3x3 upper-left submatrix A
     Eigen::Matrix3f A;
     for (int i = 0; i < 3; ++i) {
@@ -200,10 +199,26 @@ inline float evaluateTotalError(const std::vector<Quadric>& quadrics, const Vert
         result = A.fullPivLu().solve(b);
         return {result(0), result(1), result(2)};
     } else {
-        // Return the origin if the system is not solvable.
-        // TODO: Handle this case better.
-        return {0.0f, 0.0f, 0.0f};
+        // Use SVD to solve 
+        Eigen::JacobiSVD<Eigen::Matrix3f> svd(A, Eigen::ComputeFullU | Eigen::ComputeFullV);
+        result = svd.solve(b);
+        
+        // Check if the result is valid
+        bool valid = true;
+        for (int i = 0; i < 3; ++i) {
+            if (std::isnan(result(i))) {
+                valid = false;
+                break;
+            }
+        }
+        
+        if (valid) {
+            return {result(0), result(1), result(2)};
+        } else {
+            return {0.0f, 0.0f, 0.0f};
+        }
     }
-}
+} 
+
 
 #endif // QUADRIC_CALCULATOR_H

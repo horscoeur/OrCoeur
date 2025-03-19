@@ -14,6 +14,11 @@ FetchContent_Declare(
     GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
     GIT_TAG 3.4.0
 )
+set(BUILD_TESTING OFF)
+set(EIGEN_BUILD_TESTING OFF)
+set(EIGEN_MPL2_ONLY ON)
+set(EIGEN_BUILD_PKGCONFIG OFF)
+set(EIGEN_BUILD_DOC OFF)
 FetchContent_MakeAvailable(eigen)
 
 # Include Polyscope
@@ -48,7 +53,7 @@ target_compile_definitions(OrCoeur PRIVATE -DDEBUG)
 target_link_libraries(OrCoeur PRIVATE polyscope Eigen3::Eigen)
 
 # Option to activate the tests (disabled by default)
-option(ORCOEUR_BUILD_TESTS "Build unit tests" ON)
+option(ORCOEUR_BUILD_TESTS "Build unit tests" OFF)
 if(ORCOEUR_BUILD_TESTS)
     enable_testing()
 

@@ -7,6 +7,9 @@
 #include <cstdint>
 
 #include "utility.h"
+#include "structures.h"
+
+std::vector<std::array<float, 3>> loadedVertices;
 
 bool extractVerticesAndFacesFromOBJ(const std::string &filename, std::vector<std::array<float, 3>> &vertices,
                                     std::vector<std::array<int, 3>> &faces) {
@@ -59,6 +62,7 @@ bool extractVerticesAndFacesFromOBJ(const std::string &filename, std::vector<std
     vertices.resize(vertices.size());
     faces.resize(faces.size());
 
+    loadedVertices = vertices;
     return true;
 }
 
@@ -175,6 +179,6 @@ bool extractVerticesAndFacesFromPLY(const std::string &filename, std::vector<std
             }
         }
     }
-
+    loadedVertices = vertices;
     return true;
 }

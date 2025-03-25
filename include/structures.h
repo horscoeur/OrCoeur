@@ -8,6 +8,7 @@
 #include "polyscope/polyscope.h"
 #include "polyscope/point_cloud.h"
 #include "polyscope/curve_network.h"
+#include "polyscope/surface_mesh.h"
 
 /**
  * @brief Represents a 3D vertex.
@@ -31,6 +32,8 @@ struct Vertex {
         return {x-v.x, y-v.y, z-v.z};
     }
 };
+
+extern std::vector<std::array<float, 3>> loadedVertices;  // Defined in mesh_loader.cpp file (extern keyword)
 
 /**
  * @brief Represents a grid cell.
@@ -70,9 +73,25 @@ struct Grid {
         return getIndex(getCellX(pos), getCellY(pos), getCellZ(pos));
     }
 
+    void colorMeshVerticesAccordingToGrid() {
+        std::vector<double> vertexColors;
+
+        // Change color of each vertex based on the grid cell it belongs to
+        for (const auto& vertex : loadedVertices) {
+            Vertex v{vertex[0], vertex[1], vertex[2]};
+            double colorValue = getIndex(v);
+            vertexColors.push_back(colorValue);
+        }
+
+        // Add the vertex colors to the loaded mesh
+        auto* surfaceMesh = polyscope::getSurfaceMesh("Loaded Mesh");
+        surfaceMesh->addVertexScalarQuantity("Vertex Colors", vertexColors)->setColorMap("hsv")->setEnabled(true);
+    }
+
     void displayGrid() {
         std::vector<std::array<double, 3>> nodes;
         std::vector<std::array<int, 2>> edges;
+        std::vector<double> colors;  // Colors for each edge
 
         int index = 0;
 
@@ -121,11 +140,24 @@ struct Grid {
                     edges.push_back({idx4, idx6});
                     edges.push_back({idx5, idx7});
                     edges.push_back({idx6, idx7});
+
+                    // Generate a color based on the cell index
+                    double colorValue = static_cast<double>(i * resolution * resolution + j * resolution + k);
+
+                    // Add the color for each edge (repeated 12 times for the 12 edges of the cell)
+                    for (int n = 0; n < 12; ++n) {
+                        colors.push_back(colorValue);
+                    }
                 }
             }
         }
         // Register the grid with Polyscope
         auto* curveNet = polyscope::registerCurveNetwork("Grid Edges", nodes, edges);
+
+        // Add a scalar quantity to color the edges based on the cell index
+        curveNet->addEdgeScalarQuantity("Cube Colors", colors)->setColorMap("hsv")->setEnabled(true);
+        // Call the function to color the mesh vertices based on the grid cell
+        colorMeshVerticesAccordingToGrid();
     }
 };
 

@@ -7,7 +7,7 @@
 #include <vector>
 #include "polyscope/polyscope.h"
 #include "polyscope/point_cloud.h"
-
+#include "polyscope/curve_network.h"
 
 /**
  * @brief Represents a 3D vertex.
@@ -71,28 +71,61 @@ struct Grid {
     }
 
     void displayGrid() {
-        std::vector<Vertex> gridCenters;
+        std::vector<std::array<double, 3>> nodes;
+        std::vector<std::array<int, 2>> edges;
 
-        // Loop through the grid and calculate the center of each cell
+        int index = 0;
+
         for (int i = 0; i < resolution; i++) {
             for (int j = 0; j < resolution; j++) {
                 for (int k = 0; k < resolution; k++) {
-                    // Calculate the center of the cell
-                    float x = min.x + (i + 0.5f) * (max.x - min.x) / resolution;
-                    float y = min.y + (j + 0.5f) * (max.y - min.y) / resolution;
-                    float z = min.z + (k + 0.5f) * (max.z - min.z) / resolution;
 
-                    gridCenters.emplace_back(Vertex{x, y, z});
+                    // Calculate the corners of the cell
+                    float x0 = min.x + i * (max.x - min.x) / resolution;
+                    float y0 = min.y + j * (max.y - min.y) / resolution;
+                    float z0 = min.z + k * (max.z - min.z) / resolution;
+
+                    float x1 = min.x + (i + 1) * (max.x - min.x) / resolution;
+                    float y1 = min.y + (j + 1) * (max.y - min.y) / resolution;
+                    float z1 = min.z + (k + 1) * (max.z - min.z) / resolution;
+
+                    // Add the 8 corners of the cell
+                    int idx0 = index++;
+                    int idx1 = index++;
+                    int idx2 = index++;
+                    int idx3 = index++;
+                    int idx4 = index++;
+                    int idx5 = index++;
+                    int idx6 = index++;
+                    int idx7 = index++;
+
+                    nodes.push_back({x0, y0, z0});
+                    nodes.push_back({x1, y0, z0});
+                    nodes.push_back({x0, y1, z0});
+                    nodes.push_back({x1, y1, z0});
+                    nodes.push_back({x0, y0, z1});
+                    nodes.push_back({x1, y0, z1});
+                    nodes.push_back({x0, y1, z1});
+                    nodes.push_back({x1, y1, z1});
+
+                    // Add the 12 edges of the cell
+                    edges.push_back({idx0, idx1});
+                    edges.push_back({idx0, idx2});
+                    edges.push_back({idx0, idx4});
+                    edges.push_back({idx1, idx3});
+                    edges.push_back({idx1, idx5});
+                    edges.push_back({idx2, idx3});
+                    edges.push_back({idx2, idx6});
+                    edges.push_back({idx3, idx7});
+                    edges.push_back({idx4, idx5});
+                    edges.push_back({idx4, idx6});
+                    edges.push_back({idx5, idx7});
+                    edges.push_back({idx6, idx7});
                 }
             }
         }
-        // Register the grid centers with Polyscope
-        std::vector<std::array<double, 3>> points;
-        for (const auto& v : gridCenters) {
-            points.push_back({v.x, v.y, v.z});
-        }
-        polyscope::registerPointCloud("Grid Centers", points);
-
+        // Register the grid with Polyscope
+        auto* curveNet = polyscope::registerCurveNetwork("Grid Edges", nodes, edges);
     }
 };
 

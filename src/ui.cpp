@@ -7,6 +7,8 @@
 #include "mesh_conversion.h"
 #include "mesh_cutting.h"
 #include "mesh_simplification.h"
+#include "../include/adaptive/adaptive_mesh_cutting.h"
+#include "../include/adaptive/bsp_tree.h"
 #include "polyscope/surface_mesh.h"
 
 void configureImGuiStyle() {
@@ -64,7 +66,7 @@ void configureImGuiStyle() {
     colors[ImGuiCol_TabActive] = ImVec4(0.35f, 0.72f, 0.54f, 0.83f);
 }
 
-void handleFileSelection(char* filename, ImGui::FileBrowser& fileDialog) {
+void handleFileSelection(char* filename, ImGui::FileBrowser& fileDialog, std::vector<polyscope::PointCloud*> &displayedPoints) {
     ImGui::PushItemWidth(100);
     if (ImGui::Button("Open a mesh file")) {
         fileDialog.Open();
@@ -104,8 +106,67 @@ void handleFileSelection(char* filename, ImGui::FileBrowser& fileDialog) {
 
         // Load the mesh
         loadMesh(filename, fileDialog.GetSelected().extension().string());
-
         fileDialog.ClearSelected();
+
+        // Clear the displayed point clouds
+        for (const auto point : displayedPoints) {
+            polyscope::removePointCloud(point->name);
+        }
+        displayedPoints.clear();
+    }
+}
+
+void adaptativeMeshSimplification(char* filename, ImGui::FileBrowser& fileDialog, std::vector<polyscope::PointCloud*> &displayedPoints) {
+    const std::string file = std::string(filename).substr(0, std::string(filename).find_last_of('.'));
+
+    // Add margin top
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 20);
+    ImGui::Separator();
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
+
+    // title
+    ImGui::Text("Adaptative Mesh Simplification");
+
+    // Resolution slider
+    static int resolution = 100;
+    ImGui::SliderInt("Resolution", &resolution, 10, 2000);
+
+    // Leafs count slider
+    static int leafsCount = 100;
+    ImGui::SliderInt("Leafs Count", &leafsCount, 10, 6000);
+
+    // Checkbox for the visualization (point clouds)
+    static bool visualize = true;
+    ImGui::Checkbox("Visualize", &visualize);
+
+    // Simplify button
+    if (ImGui::Button("Simplify") && filename[0] != '\0') {
+        // On vide les points chargés
+        for (const auto point : displayedPoints) {
+            polyscope::removePointCloud(point->name);
+        }
+        displayedPoints.clear();
+
+        const std::string outputFilenameBinary = file + ".bin";
+        const std::string outputFilenameCells = file + "_cells.bin";
+        const std::string outputFilenameTriangleCluster = file + "_triangle_cluster.bin";
+        //const std::string outputFilenameSimplified = file + "_simplified.bin";
+        //const std::string outputFilenameSimplifiedObj = file + "_simplified.txt";
+        //const std::string outputFilenameOBJ = file + "_simplified.obj";
+
+        convertOBJtoOBJSoup(filename, outputFilenameBinary);
+        std::vector<CellData> cells = meshCuttingDualQuadric(outputFilenameBinary, outputFilenameTriangleCluster, resolution, true);
+
+        cells = meshCuttingDualQuadric(outputFilenameBinary, outputFilenameTriangleCluster, resolution, true);
+        BSPNode* root = buildBSPTree(cells, leafsCount);
+
+        if (visualize) {
+            plotBSP(displayedPoints, root, 0.);
+        }
+
+        remove(outputFilenameBinary.c_str());
+        remove(outputFilenameCells.c_str());
+        remove(outputFilenameTriangleCluster.c_str());
     }
 }
 

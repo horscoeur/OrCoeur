@@ -2,6 +2,7 @@
 #include "ui.h"
 #include "imfilebrowser.h"
 #include "mesh_conversion.h"
+#include "mesh_loader.h"
 
 /**
  * @brief Main function initializing Polyscope and handling UI.
@@ -13,6 +14,7 @@ int main(int argc, char **argv) {
     // File selection dialog
     char filename[2048] = "";
     int resolution = 5;
+    std::vector<polyscope::PointCloud*> displayedPoints;
     ImGui::FileBrowser fileDialog;
     fileDialog.SetTitle("Open a mesh file");
     fileDialog.SetTypeFilters({".obj", ".ply"});
@@ -25,7 +27,8 @@ int main(int argc, char **argv) {
 
     // Register user callback for UI
     polyscope::state::userCallback = [&]() {
-        handleFileSelection(filename, fileDialog);
+        handleFileSelection(filename, fileDialog, displayedPoints);
+        adaptativeMeshSimplification(filename, fileDialog, displayedPoints);
         conversionInfoPopup(filename, fileDialog);
         cuttingInfoPopup(filename, resolution);
     };

@@ -3,6 +3,7 @@
 
 #include "imgui.h"
 #include "imfilebrowser.h"
+#include "polyscope/point_cloud.h"
 
 /**
  * @brief Configures the ImGui color scheme and style.
@@ -13,8 +14,17 @@ void configureImGuiStyle();
  * @brief Handles the file selection dialog and mesh loading.
  * @param filename Buffer to store the selected file path.
  * @param fileDialog ImGui file browser instance.
+ * @param displayedPoints Vector containing the displayed point clouds. (adaptative mesh simplification)
  */
-void handleFileSelection(char* filename, ImGui::FileBrowser& fileDialog);
+void handleFileSelection(char* filename, ImGui::FileBrowser& fileDialog, std::vector<polyscope::PointCloud*> &displayedPoints);
+
+/**
+ * @brief Handles the mesh adaptative simplification.
+ * @param filename Buffer to store the selected file path.
+ * @param fileDialog ImGui file browser instance.
+ * @param displayedPoints Vector containing the displayed point clouds.
+ */
+void adaptativeMeshSimplification (char* filename, ImGui::FileBrowser& fileDialog, std::vector<polyscope::PointCloud*> &displayedPoints);
 
 /**
  * @brief Displays the main conversion popup window.

@@ -166,7 +166,7 @@ inline float evaluateTotalError(const std::vector<Quadric>& quadrics, const Vert
 
 /**
  * @brief Finds the optimal point that minimizes the quadric error.
- * 
+ *
  * This function solves the linear system A*x = -b to find the point
  * that minimizes the quadric error. If the system is not solvable,
  * it returns the origin (0, 0, 0).
@@ -179,30 +179,30 @@ inline Vertex findOptimalVertex(const Quadric& quadric) {
     Eigen::Matrix3f A;
     for (int i = 0; i < 3; ++i) {
         for (int j = 0; j < 3; ++j) {
-            A(i, j) = quadric(i, j); 
+            A(i, j) = quadric(i, j);
         }
     }
-    
-    // Extract the right side vector -b 
+
+    // Extract the right side vector -b
     Eigen::Vector3f b;
-    b(0) = -quadric(0, 3);  
-    b(1) = -quadric(1, 3); 
-    b(2) = -quadric(2, 3);  
-    
+    b(0) = -quadric(0, 3);
+    b(1) = -quadric(1, 3);
+    b(2) = -quadric(2, 3);
+
     // Try to solve the system A*x = b
     Eigen::Vector3f result;
-    
-    // Check if matrix is invertible 
+
+    // Check if matrix is invertible
     Eigen::FullPivLU<Eigen::Matrix3f> lu(A);
     if (lu.isInvertible()) {
         // Matrix is invertible, solve the system
         result = A.fullPivLu().solve(b);
         return {result(0), result(1), result(2)};
     } else {
-        // Use SVD to solve 
+        // Use SVD to solve
         Eigen::JacobiSVD<Eigen::Matrix3f> svd(A, Eigen::ComputeFullU | Eigen::ComputeFullV);
         result = svd.solve(b);
-        
+
         // Check if the result is valid
         bool valid = true;
         for (int i = 0; i < 3; ++i) {
@@ -211,14 +211,13 @@ inline Vertex findOptimalVertex(const Quadric& quadric) {
                 break;
             }
         }
-        
+
         if (valid) {
             return {result(0), result(1), result(2)};
         } else {
             return {0.0f, 0.0f, 0.0f};
         }
     }
-} 
-
+}
 
 #endif // QUADRIC_CALCULATOR_H

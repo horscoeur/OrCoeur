@@ -174,4 +174,41 @@ struct GridPlaneEntry {
     PlaneEquation planeEquation;
 };
 
+/**
+ * @brief Represents a dual quadric.
+ *
+ * The dual quadric encodes information about a set of points to measure the distance of a plane to these points.
+ * It is defined by:
+ *    - A 3x3 matrix D stored in an array of 9 floats,
+ *    - A vector e (of type Vertex),
+ *    - A scalar f (often equal to 1 for a single vertex).
+ */
+struct DualQuadric {
+    std::array<float, 9> D{}; // 3x3 matrix stored in a row-major order
+    Vertex e{}; // 3D vector
+    float f = 0.0f; // Scalar
+};
+
+/**
+ * @brief Represents a grid entry for dual quadric quantization.
+ *
+ * Each record associates a cell index with a vertex (for which the dual quadric will be calculated).
+ */
+struct GridDualEntry {
+    int gridIndex;
+    Vertex vertex;
+};
+
+/**
+ * @brief Represents a cell in the grid.
+ *
+ * Each cell contains a representative vertex, a dual quadric, and a quadric.
+ */
+struct CellData {
+    int cellIndex{};
+    Vertex representative{};
+    DualQuadric dualQuadric;
+    Quadric quadric;
+};
+
 #endif // STRUCTURES_H

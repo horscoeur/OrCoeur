@@ -7,7 +7,9 @@
 #include "mesh_conversion.h"
 #include "mesh_cutting.h"
 #include "mesh_simplification.h"
+#include "stream_simplification.h"
 #include "polyscope/surface_mesh.h"
+
 
 void configureImGuiStyle() {
     ImGuiStyle *style = &ImGui::GetStyle();
@@ -166,7 +168,6 @@ void cuttingInfoPopup(char* filename, int &resolution) {
                 exportBinaryOBJSoupToText(outputFilenameSimplified, outputFilenameSimplifiedObj, nbOfFaces);
 
                 // Convert the simplified mesh to OBJ format
-
                 convertOBJSoupToOBJ(outputFilenameSimplifiedObj, outputFilenameOBJ);
             }
 
@@ -249,5 +250,89 @@ void loadMesh(const char* filename, const std::string& extension) {
         polyscope::registerSurfaceMesh("Loaded Mesh", vertices, faces);
     } else {
         std::cerr << "Error: Unsupported file format." << std::endl;
+    }
+}
+
+
+void streamSimplificationPopup() {
+
+    static ImGui::FileBrowser simplificationFileDialog(ImGuiFileBrowserFlags_CloseOnEsc);
+    static char selectedFilePath[512] = "";
+
+    ImGui::SameLine();
+    if (ImGui::Button("Mesh Stream simplification")) {
+        ImGui::OpenPopup("Stream simplification");
+    }
+
+    if (ImGui::BeginPopupModal("Stream simplification", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+
+
+        ImGui::Text("Would you like to proceed?");
+
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
+        ImGui::Separator();
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 2);
+
+        static int maxTrianglesInBuffer= 1000;
+        static float decimationPercentage = 0.2;
+        static bool visualize = true;
+
+        if (ImGui::Button("Select File", ImVec2(120, 0))) {
+            simplificationFileDialog.Open();
+        }
+
+        ImGui::Text("Selected file: %s", selectedFilePath[0] != '\0' ? selectedFilePath : "None");
+
+        ImGui::InputFloat("Choose the decimation percentage", &decimationPercentage, 0.01);
+        ImGui::InputInt("Choose the number of triangles that fits in buffer", &maxTrianglesInBuffer, 1 );
+        ImGui::Checkbox("Visualize Simplification ?", &visualize);
+
+
+        if (ImGui::Button("Yes", ImVec2(120, 0))) {
+            std::string file = std::string(selectedFilePath).substr(0, std::string(selectedFilePath).find_last_of('.'));
+            const std::string newFilename = file + ".bin";
+            // If file already exists pass to the next step
+            if (!std::ifstream(newFilename)){
+                // Perform the conversion
+                if (selectedFilePath[std::strlen(selectedFilePath) - 1] == 'j') {
+                    convertOBJtoOBJSoup(selectedFilePath, newFilename);
+                } else {
+                    convertPLYtoOBJSoup(selectedFilePath, newFilename);
+                }
+            }
+
+
+            std::string outputFilenameOBJ = file + "Simplified.bin";
+
+            // Perform the mesh simplification
+            if (!streamSimplificationVisualization(newFilename, outputFilenameOBJ, maxTrianglesInBuffer, decimationPercentage, visualize)){
+                std::cerr << "Error" << std::endl;
+            };
+
+            remove(outputFilenameOBJ.c_str());
+            remove(outputFilenameOBJ.c_str());
+
+            // Reset selecteFilePath
+            std::memset(selectedFilePath, 0, sizeof(selectedFilePath));
+            // Close the popup
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("No", ImVec2(120, 0))) {
+            std::memset(selectedFilePath, 0, sizeof(selectedFilePath));
+            ImGui::CloseCurrentPopup();
+        }
+
+        simplificationFileDialog.Display();
+
+        if (simplificationFileDialog.HasSelected()) {
+            std::strcpy(selectedFilePath, simplificationFileDialog.GetSelected().string().c_str());
+            std::cout << "Loading " << selectedFilePath << "..." << std::endl;
+
+            simplificationFileDialog.ClearSelected();
+        }
+
+
+        ImGui::EndPopup();
     }
 }

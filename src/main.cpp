@@ -28,6 +28,7 @@ int main(int argc, char **argv) {
         handleFileSelection(filename, fileDialog);
         conversionInfoPopup(filename, fileDialog);
         cuttingInfoPopup(filename, resolution);
+        streamSimplificationPopup();
     };
 
     // Show Polyscope GUI

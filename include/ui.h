@@ -32,6 +32,8 @@ void conversionInfoPopup(char* filename, ImGui::FileBrowser& fileDialog);
 void cuttingInfoPopup(char* filename, int &resolution);
 
 
+void streamSimplificationPopup();
+
 /**
  * @brief Loads a mesh from the given file path.
  * @param filename The path to the mesh file.

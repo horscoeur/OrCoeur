@@ -5,8 +5,11 @@
 #include <array>
 #include <string>
 #include <cstdint>
+#include <map>
 
 #include "utility.h"
+#include "structures.h"
+
 
 bool extractVerticesAndFacesFromOBJ(const std::string &filename, std::vector<std::array<float, 3>> &vertices,
                                     std::vector<std::array<int, 3>> &faces) {
@@ -177,4 +180,80 @@ bool extractVerticesAndFacesFromPLY(const std::string &filename, std::vector<std
     }
 
     return true;
+}
+
+/**
+ * Extract triangle coordinates from a binary file within a specified range
+ * @param filename The binary file containing triangle data
+ * @param startTriangle The index of the first triangle to extract (0-based)
+ * @param endTriangle The index after the last triangle to extract (-1 for all triangles)
+ * @return A vector of TriangleCoordinates structures
+ */
+std::vector<TriangleCoordinates> extractTrianglesFromBinary(const std::string &filename,
+                                                            int startTriangle = 0,
+                                                            int endTriangle = -1)
+{
+    std::vector<TriangleCoordinates> triangles;
+    std::ifstream file(filename, std::ios::binary);
+
+    if (!file.is_open())
+    {
+        std::cerr << "Error: Could not open file " << filename << ".\n";
+        return triangles;
+    }
+
+    // Parse header to get face count
+    int faceCount = 0;
+    std::string line;
+
+    while (std::getline(file, line))
+    {
+        if (line == "END_HEADER")
+            break;
+
+        if (line.substr(0, 11) == "face_count:")
+        {
+            std::istringstream iss(line);
+            std::string dummy;
+            iss >> dummy >> faceCount;
+        }
+    }
+
+    // Validate and adjust the range parameters
+    if (startTriangle < 0)
+        startTriangle = 0;
+    if (endTriangle < 0 || endTriangle > faceCount)
+        endTriangle = faceCount;
+    if (startTriangle >= endTriangle)
+        return triangles; // Empty range
+
+    // Skip triangles before the start position
+    if (startTriangle > 0)
+    {
+        file.seekg(startTriangle * sizeof(TriangleCoordinates), std::ios::cur);
+    }
+
+    // Calculate how many triangles to read
+    int trianglesToRead = endTriangle - startTriangle;
+    triangles.reserve(trianglesToRead);
+
+    // Read the triangles
+    TriangleCoordinates triangle;
+    for (int i = 0; i < trianglesToRead; i++)
+    {
+        if (file.read(reinterpret_cast<char *>(&triangle), sizeof(TriangleCoordinates)))
+        {
+            triangles.push_back(triangle);
+        }
+        else
+        {
+            break; // End of file or reading error
+        }
+    }
+
+    std::cout << "Extracted " << triangles.size() << " triangles from "
+              << filename << " (range " << startTriangle << " to " << endTriangle << ")" << std::endl;
+
+    file.close();
+    return triangles;
 }

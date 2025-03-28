@@ -120,7 +120,7 @@ bool dereferenceClusterPass1(const std::string &representativesFilename, const s
                 }
             }
             
-            // Si on a trouvé l'indice correspondant
+            // If we found the corresponding index
             if (currentGridIndex == tri.v1) {
                 Triangle_Pass1 triPass1;
                 triPass1.v1 = currentVertex;

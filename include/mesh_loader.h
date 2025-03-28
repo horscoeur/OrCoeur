@@ -5,6 +5,8 @@
 #include <array>
 #include <string>
 
+#include "structures.h"
+
 /**
  * @brief Extracts vertices and faces from an OBJ file.
  *
@@ -30,5 +32,17 @@ bool extractVerticesAndFacesFromOBJ(const std::string &filename, std::vector<std
  */
 bool extractVerticesAndFacesFromPLY(const std::string &filename, std::vector<std::array<float, 3>> &vertices,
                                     std::vector<std::array<int, 3>> &faces);
+
+
+
+
+bool extractVerticesAndFacesFromPLY(const std::string &filename, std::vector<std::array<float, 3>> &vertices,std::vector<std::array<int, 3>> &faces, 
+    int startTriangle, int endTriangle);
+
+bool extractVerticesAndFacesFromOBJ(const std::string &filename, std::vector<std::array<float, 3>> &vertices,std::vector<std::array<int, 3>> &faces,
+    int startTriangle, int endTriangle);
+
+
+std::vector<TriangleCoordinates> extractTrianglesFromBinary(const std::string &filename, int startTriangle = 0, int endTriangle = -1);
 
 #endif // MESH_LOADER_H

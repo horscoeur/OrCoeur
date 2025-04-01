@@ -13,8 +13,9 @@ void configureImGuiStyle();
  * @brief Handles the file selection dialog and mesh loading.
  * @param filename Buffer to store the selected file path.
  * @param fileDialog ImGui file browser instance.
+ * @param simplfyTheMeshOutOfCore Boolean to check if the mesh should be simplified out of core.
  */
-void handleFileSelection(char* filename, ImGui::FileBrowser& fileDialog);
+void handleFileSelection(char* filename, ImGui::FileBrowser& fileDialog,bool &simplfyTheMeshOutOfCore);
 
 /**
  * @brief Displays the main conversion popup window.
@@ -25,11 +26,18 @@ void conversionInfoPopup(char* filename, ImGui::FileBrowser& fileDialog);
 
 
 /**
- * @brief Displays the mesh cutting popup window.
+ * @brief Displays the mesh simplification popup window.
+ * @param filename The selected file path.
+ * @param resolution The resolution of the simplification.
+ */
+void simplificationOutOfCoreInfoPopup(char* filename, int &resolution);
+
+/**
+ * @brief Displays the mesh simplification popup window.
  * @param filename The selected file path.
  * @param resolution The resolution of the cutting.
  */
-void cuttingInfoPopup(char* filename, int &resolution);
+void simplificationInfoPopup(char* filename, int &resolution);
 
 
 /**

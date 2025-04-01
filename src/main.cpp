@@ -16,7 +16,7 @@ int main(int argc, char **argv) {
     ImGui::FileBrowser fileDialog;
     fileDialog.SetTitle("Open a mesh file");
     fileDialog.SetTypeFilters({".obj", ".ply"});
-
+    bool simplfyTheMeshOutOfCore = false;
     // Apply ImGui style
     polyscope::options::configureImGuiStyleCallback = configureImGuiStyle;
 
@@ -25,9 +25,10 @@ int main(int argc, char **argv) {
 
     // Register user callback for UI
     polyscope::state::userCallback = [&]() {
-        handleFileSelection(filename, fileDialog);
+        handleFileSelection(filename, fileDialog, simplfyTheMeshOutOfCore);
         conversionInfoPopup(filename, fileDialog);
-        cuttingInfoPopup(filename, resolution);
+        simplificationOutOfCoreInfoPopup(filename, resolution);
+        simplificationInfoPopup(filename, resolution);
     };
 
     // Show Polyscope GUI

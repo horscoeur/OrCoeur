@@ -64,10 +64,15 @@ void configureImGuiStyle() {
     colors[ImGuiCol_TabActive] = ImVec4(0.35f, 0.72f, 0.54f, 0.83f);
 }
 
-void handleFileSelection(char* filename, ImGui::FileBrowser& fileDialog) {
+void handleFileSelection(char* filename, ImGui::FileBrowser& fileDialog,bool &simplfyTheMeshOutOfCore) {
+    if (ImGui::Button("Simplfy -> Open a mesh file [OUT OF CORE]")) {
+        simplfyTheMeshOutOfCore = true;
+        fileDialog.Open();
+    }
     ImGui::PushItemWidth(100);
     if (ImGui::Button("Open a mesh file")) {
         fileDialog.Open();
+        simplfyTheMeshOutOfCore = false;
     }
     ImGui::SameLine();
     if (ImGui::Button("Convert to OBJSoup")) {
@@ -83,14 +88,14 @@ void handleFileSelection(char* filename, ImGui::FileBrowser& fileDialog) {
         }
     }
     ImGui::SameLine();
-    if (ImGui::Button("Cut mesh")) {
+    if (ImGui::Button("Symplified the mesh")) {
         // If a file is loaded
         if (filename[0] != '\0') {
             const std::string extension = std::string(filename).substr(std::string(filename).find_last_of('.'));
             if (extension != ".obj" && extension != ".ply") {
                 std::cerr << "Error: Unsupported file format." << std::endl;
             } else {
-                ImGui::OpenPopup("Mesh Cutting");
+                ImGui::OpenPopup("Mesh Symplify");
             }
         }
     }
@@ -101,17 +106,103 @@ void handleFileSelection(char* filename, ImGui::FileBrowser& fileDialog) {
     if (fileDialog.HasSelected()) {
         std::strcpy(filename, fileDialog.GetSelected().string().c_str());
         std::cout << "Loading " << filename << "..." << std::endl;
-
-        // Load the mesh
-        loadMesh(filename, fileDialog.GetSelected().extension().string());
+        if (simplfyTheMeshOutOfCore) {
+            const std::string extension = std::string(filename).substr(std::string(filename).find_last_of('.'));
+            if (extension != ".obj" && extension != ".ply") {
+                std::cerr << "Error: Unsupported file format." << std::endl;
+            } else {
+                ImGui::OpenPopup("Mesh Simplfy Out of Core");
+            }
+        }
+        else {
+            // Load the mesh
+            loadMesh(filename, fileDialog.GetSelected().extension().string());
+        }
 
         fileDialog.ClearSelected();
     }
 }
 
-void cuttingInfoPopup(char* filename, int &resolution) {
-    if (ImGui::BeginPopupModal("Mesh Cutting", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::Text("The selected mesh will be cut into clusters.");
+void simplificationOutOfCoreInfoPopup(char* filename, int &resolution) {
+    if (ImGui::BeginPopupModal("Mesh Simplfy Out of Core", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::Text("The selected mesh will be simplified.");
+        ImGui::Text("Would you like to proceed?");
+
+
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
+        ImGui::Separator();
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 2);
+
+        ImGui::InputInt("Resolution", &resolution);
+        ImGui::SameLine();
+        if (ImGui::Button("Yes", ImVec2(120, 0))) {
+            //Add input field for resolution
+            const std::string newFilename = std::string(filename).substr(0, std::string(filename).find_last_of('.')) + ".bin";
+            // If file already exists pass to the next step
+            if (!std::ifstream(newFilename)){
+                // Perform the conversion
+                if (filename[std::strlen(filename) - 1] == 'j') {
+                    convertOBJtoOBJSoup(filename, newFilename);
+                } else {
+                    convertPLYtoOBJSoup(filename, newFilename);
+                }
+            }
+
+            std::string file = std::string(filename).substr(0, std::string(filename).find_last_of('.'));
+
+            std::string outputFilenamePlaneEquation = file + "PlaneEquation.bin";
+            std::string outputFilenamePlaneEquationSorted = file + "PlaneEquationSorted.bin";
+            std::string outputFilenameTriangleCluster = file + "TriangleCluster.bin";
+            std::string outputFilenameRepresentatives = file + "Representatives.bin";
+            std::string outputFilenameSimplified = file + "Simplified.bin";
+            std::string outputFilenameSimplifiedObj = file + "Simplified.txt";
+            std::string outputFilenameOBJ = file + "Simplified.obj";
+
+            // Perform the mesh cutting
+            meshCutting(newFilename, outputFilenamePlaneEquation, outputFilenameTriangleCluster, resolution);
+
+            // Sort the plane equations by grid index
+            externalMergeSortGridPlaneEntry(outputFilenamePlaneEquation, outputFilenamePlaneEquationSorted);
+
+            // Compute the representative vertices
+            computeGridCellRepresentatives(outputFilenamePlaneEquationSorted,  outputFilenameRepresentatives);
+
+            // Generate the simplified mesh by replacing the grid cells with their representative vertices
+            int nbOfFaces = generateSimplifiedMeshBin(outputFilenameRepresentatives, outputFilenameTriangleCluster, outputFilenameSimplified);
+
+            // Convert the simplified mesh to text format
+            exportBinaryOBJSoupToText(outputFilenameSimplified, outputFilenameSimplifiedObj, nbOfFaces);
+
+            // Convert the simplified mesh to OBJ format
+            convertOBJSoupToOBJ(outputFilenameSimplifiedObj, outputFilenameOBJ);
+
+
+            remove(newFilename.c_str());
+            remove(outputFilenamePlaneEquation.c_str());
+            remove(outputFilenamePlaneEquationSorted.c_str());
+            remove(outputFilenameTriangleCluster.c_str());
+            remove(outputFilenameRepresentatives.c_str());
+            remove(outputFilenameSimplified.c_str());
+            remove(outputFilenameSimplifiedObj.c_str());
+
+            // Open the simplified mesh
+            const std::string extension = std::string(outputFilenameOBJ).substr(std::string(outputFilenameOBJ).find_last_of('.'));
+            loadMesh(outputFilenameOBJ.c_str(), extension);
+
+            // Close the popup
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("No", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+}
+
+void simplificationInfoPopup(char* filename, int &resolution) {
+    if (ImGui::BeginPopupModal("Mesh Symplify", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::Text("The selected mesh will be simplified.");
         ImGui::Text("Would you like to proceed?");
 
 
@@ -166,7 +257,6 @@ void cuttingInfoPopup(char* filename, int &resolution) {
                 exportBinaryOBJSoupToText(outputFilenameSimplified, outputFilenameSimplifiedObj, nbOfFaces);
 
                 // Convert the simplified mesh to OBJ format
-
                 convertOBJSoupToOBJ(outputFilenameSimplifiedObj, outputFilenameOBJ);
             }
 

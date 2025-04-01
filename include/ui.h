@@ -16,7 +16,7 @@ void configureImGuiStyle();
  * @param fileDialog ImGui file browser instance.
  * @param displayedPoints Vector containing the displayed point clouds. (adaptative mesh simplification)
  */
-void handleFileSelection(char* filename, ImGui::FileBrowser& fileDialog, std::vector<polyscope::PointCloud*> &displayedPoints);
+void handleFileSelection(char* filename, ImGui::FileBrowser& fileDialog, bool &simplifyTheMeshOutOfCore, std::vector<polyscope::PointCloud*> &displayedPoints);
 
 /**
  * @brief Handles the mesh adaptative simplification.
@@ -33,14 +33,19 @@ void adaptativeMeshSimplification (char* filename, ImGui::FileBrowser& fileDialo
  */
 void conversionInfoPopup(char* filename, ImGui::FileBrowser& fileDialog);
 
+/**
+ * @brief Displays the mesh simplification popup window.
+ * @param filename The selected file path.
+ * @param resolution The resolution of the simplification.
+ */
+void simplificationOutOfCoreInfoPopup(char* filename, int &resolution);
 
 /**
- * @brief Displays the mesh cutting popup window.
+ * @brief Displays the mesh simplification popup window.
  * @param filename The selected file path.
  * @param resolution The resolution of the cutting.
  */
-void cuttingInfoPopup(char* filename, int &resolution);
-
+void simplificationInfoPopup(char* filename, int &resolution);
 
 /**
  * @brief Loads a mesh from the given file path.

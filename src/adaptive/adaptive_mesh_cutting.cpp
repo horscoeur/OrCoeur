@@ -40,9 +40,7 @@ Vertex computeRepresentativeFromDualQuadric(const DualQuadric &dq) {
         return { 0.0f, 0.0f, 0.0f };
 }
 
-std::vector<CellData> meshCuttingDualQuadric(const std::string &inFilenameBinary,
-    const std::string &outputFilenameTriangleCluster,
-    int resolution, bool cutTheMesh) {
+std::vector<CellData> meshCuttingDualQuadric(const std::string &inFilenameBinary, int resolution, bool cutTheMesh) {
 
     std::vector<CellData> cells;
 
@@ -66,14 +64,6 @@ std::vector<CellData> meshCuttingDualQuadric(const std::string &inFilenameBinary
     std::streampos pos = file.tellg();
     if (pos == -1) {
         std::cerr << "Error: Could not find the end of the header.\n";
-        file.close();
-        return {};
-    }
-
-    // Open output files
-    std::ofstream triangleClusterFile(outputFilenameTriangleCluster, std::ios::binary);
-    if (!triangleClusterFile.is_open()) {
-        std::cerr << "Error: Could not open output file.\n";
         file.close();
         return {};
     }
@@ -103,7 +93,6 @@ std::vector<CellData> meshCuttingDualQuadric(const std::string &inFilenameBinary
     if (!cutTheMesh) {
         grid.displayGrid();
         file.close();
-        triangleClusterFile.close();
         return {};
     }
 
@@ -144,13 +133,6 @@ std::vector<CellData> meshCuttingDualQuadric(const std::string &inFilenameBinary
         cellDuals[v1Index] = cellDuals.contains(v1Index) ? addDualQuadric(cellDuals[v1Index], dq1) : dq1;
         cellDuals[v2Index] = cellDuals.contains(v2Index) ? addDualQuadric(cellDuals[v2Index], dq2) : dq2;
         cellDuals[v3Index] = cellDuals.contains(v3Index) ? addDualQuadric(cellDuals[v3Index], dq3) : dq3;
-
-        // Write the triangle to the cluster file if the vertices are in different cells
-        if (v1Index != v2Index && v2Index != v3Index && v3Index != v1Index) {
-            triangleClusterFile.write(reinterpret_cast<const char*>(&v1Index), sizeof(int));
-            triangleClusterFile.write(reinterpret_cast<const char*>(&v2Index), sizeof(int));
-            triangleClusterFile.write(reinterpret_cast<const char*>(&v3Index), sizeof(int));
-        }
     }
 
     // Iterate over the accumulation table to compute the representative of each cell
@@ -167,6 +149,5 @@ std::vector<CellData> meshCuttingDualQuadric(const std::string &inFilenameBinary
 
     // Close the files
     file.close();
-    triangleClusterFile.close();
     return cells;
 }

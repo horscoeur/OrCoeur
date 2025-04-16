@@ -9,6 +9,7 @@
 #include "mesh_simplification.h"
 #include "../include/adaptive/adaptive_mesh_cutting.h"
 #include "../include/adaptive/bsp_tree.h"
+#include "adaptive/adaptive_mesh_simplification.h"
 #include "polyscope/surface_mesh.h"
 
 void configureImGuiStyle() {
@@ -136,8 +137,8 @@ void adaptativeMeshSimplification(char* filename, ImGui::FileBrowser& fileDialog
     ImGui::SliderInt("Leafs Count", &leafsCount, 10, 6000);
 
     // Checkbox for the visualization (point clouds)
-    static bool visualize = true;
-    ImGui::Checkbox("Visualize", &visualize);
+    static bool visualizeLeafs = true;
+    ImGui::Checkbox("Visualize Leafs", &visualizeLeafs);
 
     // Simplify button
     if (ImGui::Button("Simplify") && filename[0] != '\0') {
@@ -149,24 +150,23 @@ void adaptativeMeshSimplification(char* filename, ImGui::FileBrowser& fileDialog
 
         const std::string outputFilenameBinary = file + ".bin";
         const std::string outputFilenameCells = file + "_cells.bin";
-        const std::string outputFilenameTriangleCluster = file + "_triangle_cluster.bin";
-        //const std::string outputFilenameSimplified = file + "_simplified.bin";
-        //const std::string outputFilenameSimplifiedObj = file + "_simplified.txt";
-        //const std::string outputFilenameOBJ = file + "_simplified.obj";
+        const std::string outputFilenameSimplified = file + "_simplified.bin";
+        const std::string outputFilenameOBJ = file + "_simplified.obj";
 
         convertOBJtoOBJSoup(filename, outputFilenameBinary);
-        std::vector<CellData> cells = meshCuttingDualQuadric(outputFilenameBinary, outputFilenameTriangleCluster, resolution, true);
-
-        cells = meshCuttingDualQuadric(outputFilenameBinary, outputFilenameTriangleCluster, resolution, true);
+        const std::vector<CellData> cells = meshCuttingDualQuadric(outputFilenameBinary, resolution, true);
         BSPNode* root = buildBSPTree(cells, leafsCount);
 
-        if (visualize) {
-            plotBSP(displayedPoints, root, 0.);
+        if (visualizeLeafs) {
+            root->plot(displayedPoints, 0.);
         }
+
+        adaptiveMeshSimplification(outputFilenameBinary, outputFilenameSimplified, root);
+        convertOBJSoupToOBJ(outputFilenameSimplified, outputFilenameOBJ);
 
         remove(outputFilenameBinary.c_str());
         remove(outputFilenameCells.c_str());
-        remove(outputFilenameTriangleCluster.c_str());
+        remove(outputFilenameSimplified.c_str());
     }
 }
 

@@ -155,7 +155,6 @@ void simplificationOutOfCoreInfoPopup(char* filename, int &resolution) {
             std::string outputFilenameTriangleCluster = file + "TriangleCluster.bin";
             std::string outputFilenameRepresentatives = file + "Representatives.bin";
             std::string outputFilenameSimplified = file + "Simplified.bin";
-            std::string outputFilenameSimplifiedObj = file + "Simplified.txt";
             std::string outputFilenameOBJ = file + "Simplified.obj";
 
             // Perform the mesh cutting
@@ -168,14 +167,10 @@ void simplificationOutOfCoreInfoPopup(char* filename, int &resolution) {
             computeGridCellRepresentatives(outputFilenamePlaneEquationSorted,  outputFilenameRepresentatives);
 
             // Generate the simplified mesh by replacing the grid cells with their representative vertices
-            int nbOfFaces = generateSimplifiedMeshBin(outputFilenameRepresentatives, outputFilenameTriangleCluster, outputFilenameSimplified);
-
-            // Convert the simplified mesh to text format
-            exportBinaryOBJSoupToText(outputFilenameSimplified, outputFilenameSimplifiedObj, nbOfFaces);
+            generateSimplifiedMeshBin(outputFilenameRepresentatives, outputFilenameTriangleCluster, outputFilenameSimplified);
 
             // Convert the simplified mesh to OBJ format
-            convertOBJSoupToOBJ(outputFilenameSimplifiedObj, outputFilenameOBJ);
-
+            convertOBJSoupToOBJ(outputFilenameSimplified, outputFilenameOBJ);
 
             remove(newFilename.c_str());
             remove(outputFilenamePlaneEquation.c_str());
@@ -183,7 +178,6 @@ void simplificationOutOfCoreInfoPopup(char* filename, int &resolution) {
             remove(outputFilenameTriangleCluster.c_str());
             remove(outputFilenameRepresentatives.c_str());
             remove(outputFilenameSimplified.c_str());
-            remove(outputFilenameSimplifiedObj.c_str());
 
             // Open the simplified mesh
             const std::string extension = std::string(outputFilenameOBJ).substr(std::string(outputFilenameOBJ).find_last_of('.'));
@@ -237,7 +231,6 @@ void simplificationInfoPopup(char* filename, int &resolution) {
             std::string outputFilenameTriangleCluster = file + "TriangleCluster.bin";
             std::string outputFilenameRepresentatives = file + "Representatives.bin";
             std::string outputFilenameSimplified = file + "Simplified.bin";
-            std::string outputFilenameSimplifiedObj = file + "Simplified.txt";
             std::string outputFilenameOBJ = file + "Simplified.obj";
 
             // Perform the mesh cutting
@@ -251,13 +244,10 @@ void simplificationInfoPopup(char* filename, int &resolution) {
                 computeGridCellRepresentatives(outputFilenamePlaneEquationSorted,  outputFilenameRepresentatives);
 
                 // Generate the simplified mesh by replacing the grid cells with their representative vertices
-                int nbOfFaces = generateSimplifiedMeshBin(outputFilenameRepresentatives, outputFilenameTriangleCluster, outputFilenameSimplified);
-
-                // Convert the simplified mesh to text format
-                exportBinaryOBJSoupToText(outputFilenameSimplified, outputFilenameSimplifiedObj, nbOfFaces);
+                generateSimplifiedMeshBin(outputFilenameRepresentatives, outputFilenameTriangleCluster, outputFilenameSimplified);
 
                 // Convert the simplified mesh to OBJ format
-                convertOBJSoupToOBJ(outputFilenameSimplifiedObj, outputFilenameOBJ);
+                convertOBJSoupToOBJ(outputFilenameSimplified, outputFilenameOBJ);
             }
 
             remove(newFilename.c_str());
@@ -266,7 +256,6 @@ void simplificationInfoPopup(char* filename, int &resolution) {
             remove(outputFilenameTriangleCluster.c_str());
             remove(outputFilenameRepresentatives.c_str());
             remove(outputFilenameSimplified.c_str());
-            remove(outputFilenameSimplifiedObj.c_str());
 
             // Close the popup
             ImGui::CloseCurrentPopup();

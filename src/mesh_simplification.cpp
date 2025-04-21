@@ -262,7 +262,7 @@ int dereferenceClusterPass3(const std::string &pass2Filename, const std::string 
     
     std::ifstream sortedPass2(sortedPass2File, std::ios::binary);
     std::ifstream sortedReps(representativesFilename, std::ios::binary);
-    std::ofstream output(outputFilename, std::ios::binary);
+    std::ofstream output(outputFilename, std::ios::binary | std::ios::app);
     
     if (!sortedPass2.is_open() || !sortedReps.is_open() || !output.is_open()) {
         std::cerr << "Error: Unable to open files in deferenceClusterPasses3" << std::endl;
@@ -357,12 +357,33 @@ int dereferenceClusterPass3(const std::string &pass2Filename, const std::string 
 }
 
 int generateSimplifiedMeshBin(const std::string &representativesFilemame, const std::string &clusterFilename, const std::string &outputFilename) {
+ 
+    std::ofstream headerFile(outputFilename);
+    if (headerFile.is_open()) {
+        headerFile << "format: binary_little_endian\n";
+        headerFile << "face_count: " << 0 << "\n";
+        headerFile << "END_HEADER\n";
+        headerFile.close();
+    }
+    
+    
     dereferenceClusterPass1(representativesFilemame, clusterFilename, "pass1.bin");
     dereferenceClusterPass2("pass1.bin", representativesFilemame, "pass2.bin"); 
     int nbOfFaces = dereferenceClusterPass3("pass2.bin", representativesFilemame, outputFilename);
 
     std::remove("pass1.bin");
     std::remove("pass2.bin");
+
+    std::fstream updateFile(outputFilename, std::ios::in | std::ios::out);
+    if (updateFile.is_open()) {
+        updateFile.seekp(41); 
+        std::string faceCountStr = std::to_string(nbOfFaces);
+        faceCountStr.resize(1, ' '); 
+        updateFile.write(faceCountStr.c_str(), faceCountStr.length());
+        updateFile.close();
+    }
+
+
 
     return nbOfFaces;
 }

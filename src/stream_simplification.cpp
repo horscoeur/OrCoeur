@@ -155,7 +155,7 @@ bool streamSimplificationVisualization(const std::string &inputFileName, const s
     int nbTrianglesRead = 0;
     int nbTrianglesInCore = 0;
     int nbTrianglesWritten = 0;
-    int nbTriangleTotal = getTriangleCount(inputFileName);
+    int nbTriangleTotal = getTriangleCount(inputFileName); 
 
     writeHeader(outputFile, nbTriangleTotal, true);
 

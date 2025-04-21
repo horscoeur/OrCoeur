@@ -9,6 +9,7 @@
 #include "mesh_simplification.h"
 #include "stream_simplification.h"
 #include "polyscope/surface_mesh.h"
+#include "sort_barycenter.h"
 
 
 void configureImGuiStyle() {
@@ -148,7 +149,6 @@ void cuttingInfoPopup(char* filename, int &resolution) {
             std::string outputFilenameTriangleCluster = file + "TriangleCluster.bin";
             std::string outputFilenameRepresentatives = file + "Representatives.bin";
             std::string outputFilenameSimplified = file + "Simplified.bin";
-            std::string outputFilenameSimplifiedObj = file + "Simplified.txt";
             std::string outputFilenameOBJ = file + "Simplified.obj";
 
             // Perform the mesh cutting
@@ -162,13 +162,10 @@ void cuttingInfoPopup(char* filename, int &resolution) {
                 computeGridCellRepresentatives(outputFilenamePlaneEquationSorted,  outputFilenameRepresentatives);
 
                 // Generate the simplified mesh by replacing the grid cells with their representative vertices
-                int nbOfFaces = generateSimplifiedMeshBin(outputFilenameRepresentatives, outputFilenameTriangleCluster, outputFilenameSimplified);
-
-                // Convert the simplified mesh to text format
-                exportBinaryOBJSoupToText(outputFilenameSimplified, outputFilenameSimplifiedObj, nbOfFaces);
+                generateSimplifiedMeshBin(outputFilenameRepresentatives, outputFilenameTriangleCluster, outputFilenameSimplified);
 
                 // Convert the simplified mesh to OBJ format
-                convertOBJSoupToOBJ(outputFilenameSimplifiedObj, outputFilenameOBJ);
+                convertOBJSoupToOBJ(outputFilenameSimplified, outputFilenameOBJ);
             }
 
             remove(newFilename.c_str());
@@ -177,7 +174,6 @@ void cuttingInfoPopup(char* filename, int &resolution) {
             remove(outputFilenameTriangleCluster.c_str());
             remove(outputFilenameRepresentatives.c_str());
             remove(outputFilenameSimplified.c_str());
-            remove(outputFilenameSimplifiedObj.c_str());
 
             // Close the popup
             ImGui::CloseCurrentPopup();
@@ -257,6 +253,7 @@ void loadMesh(const char* filename, const std::string& extension) {
 void streamSimplificationPopup() {
 
     static ImGui::FileBrowser simplificationFileDialog(ImGuiFileBrowserFlags_CloseOnEsc);
+    simplificationFileDialog.SetTypeFilters({ ".obj", ".ply" });
     static char selectedFilePath[512] = "";
 
     ImGui::SameLine();
@@ -276,6 +273,9 @@ void streamSimplificationPopup() {
         static int maxTrianglesInBuffer= 1000;
         static float decimationPercentage = 0.2;
         static bool visualize = true;
+        static const char* axes[] = { "X Axis", "Y Axis", "Z Axis" };  
+        static int currentAxisIndex = 0; 
+
 
         if (ImGui::Button("Select File", ImVec2(120, 0))) {
             simplificationFileDialog.Open();
@@ -285,15 +285,13 @@ void streamSimplificationPopup() {
 
         ImGui::InputFloat("Choose the decimation percentage", &decimationPercentage, 0.01);
         ImGui::InputInt("Choose the number of triangles that fits in buffer", &maxTrianglesInBuffer, 1 );
+        ImGui::Combo("Sorting axis", &currentAxisIndex, axes, IM_ARRAYSIZE(axes)); 
         ImGui::Checkbox("Visualize Simplification ?", &visualize);
-
 
         if (ImGui::Button("Yes", ImVec2(120, 0))) {
             std::string file = std::string(selectedFilePath).substr(0, std::string(selectedFilePath).find_last_of('.'));
             const std::string newFilename = file + ".bin";
-            // If file already exists pass to the next step
             if (!std::ifstream(newFilename)){
-                // Perform the conversion
                 if (selectedFilePath[std::strlen(selectedFilePath) - 1] == 'j') {
                     convertOBJtoOBJSoup(selectedFilePath, newFilename);
                 } else {
@@ -301,16 +299,27 @@ void streamSimplificationPopup() {
                 }
             }
 
+            char sortAxis;
+            switch (currentAxisIndex) {
+                default: sortAxis = 'x'; break;
+                case 1: sortAxis = 'y'; break;
+                case 2: sortAxis = 'z'; break;
+            }
+
+            const std::string sortedFileName = file + "SortedByBarycenter.bin";
+
+            sortTrianglesByBarycenter(newFilename, sortedFileName, sortAxis);
 
             std::string outputFilenameOBJ = file + "Simplified.bin";
 
             // Perform the mesh simplification
-            if (!streamSimplificationVisualization(newFilename, outputFilenameOBJ, maxTrianglesInBuffer, decimationPercentage, visualize)){
+            if (!streamSimplificationVisualization(sortedFileName, outputFilenameOBJ, maxTrianglesInBuffer, decimationPercentage, visualize)){
                 std::cerr << "Error" << std::endl;
             };
 
+            remove(newFilename.c_str());
             remove(outputFilenameOBJ.c_str());
-            remove(outputFilenameOBJ.c_str());
+            remove(sortedFileName.c_str());
 
             // Reset selecteFilePath
             std::memset(selectedFilePath, 0, sizeof(selectedFilePath));

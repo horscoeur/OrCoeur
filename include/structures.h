@@ -174,4 +174,12 @@ struct GridPlaneEntry {
     PlaneEquation planeEquation;
 };
 
+/**
+ * @brief Represents the triangle and its barycenter
+ */
+struct TriangleWithBarycenter {
+    TriangleCoordinates triangle;
+    Vertex barycenter;  
+};
+
 #endif // STRUCTURES_H

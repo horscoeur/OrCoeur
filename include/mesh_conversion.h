@@ -107,4 +107,7 @@ void processBinary(std::ifstream &file, std::ofstream &vertexFile, std::ofstream
  */
 void processASCII(std::ifstream &file, std::ofstream &vertexFile, std::ofstream &faceFile);
 
+
+ORCOEURHeader parseORCOEURHeader(std::ifstream &file);
+
 #endif // CONVERSION_H

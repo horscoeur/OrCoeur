@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include <filesystem>
 
 
 // ------------------- Exporting the final OBJSoup file -------------------

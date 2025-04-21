@@ -192,6 +192,7 @@ inline Vertex findOptimalVertex(const Quadric& quadric) {
     // Try to solve the system A*x = b
     Eigen::Vector3f result;
     
+    /*
     // Check if matrix is invertible 
     Eigen::FullPivLU<Eigen::Matrix3f> lu(A);
     if (lu.isInvertible()) {
@@ -218,6 +219,37 @@ inline Vertex findOptimalVertex(const Quadric& quadric) {
             return {0.0f, 0.0f, 0.0f};
         }
     }
+    */
+
+    Eigen::FullPivLU<Eigen::Matrix3f> lu(A);
+    if (lu.isInvertible()) {
+        // Matrix is invertible, solve the system
+        result = A.fullPivLu().solve(b);
+        return {result(0), result(1), result(2)};
+    } else {
+        // Use LDLT to solve
+        Eigen::LDLT<Eigen::Matrix3f> ldlt(A);
+        if (ldlt.info() == Eigen::Success) {
+            result = ldlt.solve(b);
+            
+            // Check if the result is valid
+            bool valid = true;
+            for (int i = 0; i < 3; ++i) {
+                if (std::isnan(result(i))) {
+                    valid = false;
+                    break;
+                }
+            }
+            
+            if (valid) {
+                return {result(0), result(1), result(2)};
+            }
+        }
+        
+        return {0.0f, 0.0f, 0.0f};
+    }
+
+
 } 
 
 

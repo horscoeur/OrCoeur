@@ -269,6 +269,13 @@ int dereferenceClusterPass3(const std::string &pass2Filename, const std::string 
         std::remove(sortedPass2File.c_str());
         return -1;
     }
+
+    // Write header and remember position of vertex and face counts
+    output << "format: binary_little_endian\n";
+
+    std::streampos faceCountPos = output.tellp();
+    output << "face_count: 0000000000\n";
+    output << "END_HEADER\n";
     
     std::vector<Triangle_Pass2> triangleBuffer(BUFFER_SIZE);
     std::vector<TriangleCoordinates> outputBuffer;
@@ -282,7 +289,7 @@ int dereferenceClusterPass3(const std::string &pass2Filename, const std::string 
         return -1;
     }
     
-    int nbFaces = 0;
+    int faceCount = 0;
     
     while (true) {
         sortedPass2.read(reinterpret_cast<char*>(triangleBuffer.data()), BUFFER_SIZE * sizeof(Triangle_Pass2));
@@ -323,7 +330,7 @@ int dereferenceClusterPass3(const std::string &pass2Filename, const std::string 
                 finalTri.v2 = tri.v2;
                 finalTri.v3 = currentVertex;
                 outputBuffer.push_back(finalTri);
-                nbFaces++;
+                faceCount++;
             } else if (currentGridIndex > tri.v3) {
                 std::cerr << "Warning: Grid index " << tri.v3 << " not found in representatives" << std::endl;
                 
@@ -335,33 +342,35 @@ int dereferenceClusterPass3(const std::string &pass2Filename, const std::string 
             }
             
             if (outputBuffer.size() >= BUFFER_SIZE) {
-                output.write(reinterpret_cast<char*>(outputBuffer.data()), 
-                           outputBuffer.size() * sizeof(TriangleCoordinates));
+                output.write(reinterpret_cast<char*>(outputBuffer.data()), outputBuffer.size() * sizeof(TriangleCoordinates));
                 outputBuffer.clear();
             }
         }
     }
     
     if (!outputBuffer.empty()) {
-        output.write(reinterpret_cast<char*>(outputBuffer.data()), 
-                   outputBuffer.size() * sizeof(TriangleCoordinates));
+        output.write(reinterpret_cast<char*>(outputBuffer.data()), outputBuffer.size() * sizeof(TriangleCoordinates));
     }
     
     sortedPass2.close();
     sortedReps.close();
     output.close();
     std::remove(sortedPass2File.c_str());
-    
-    std::cout << "Simplified mesh created with " << nbFaces << " faces." << std::endl;
-    return nbFaces;
+
+    // Rewrite the correct face_count in the header
+    output.seekp(faceCountPos);
+    output << "face_count: " << std::setw(10) << std::setfill(' ') << faceCount << "\n";
+
+    std::cout << "Simplified mesh created with " << faceCount << " faces." << std::endl;
+    return faceCount;
 }
 
-int generateSimplifiedMeshBin(const std::string &representativesFilemame, const std::string &clusterFilename, const std::string &outputFilename) {
-    dereferenceClusterPass1(representativesFilemame, clusterFilename, "pass1.bin");
-    dereferenceClusterPass2("pass1.bin", representativesFilemame, "pass2.bin"); 
-    int nbOfFaces = dereferenceClusterPass3("pass2.bin", representativesFilemame, outputFilename);
-
+int generateSimplifiedMeshBin(const std::string &representativesFilename, const std::string &clusterFilename, const std::string &outputFilename) {
+    dereferenceClusterPass1(representativesFilename, clusterFilename, "pass1.bin");
+    dereferenceClusterPass2("pass1.bin", representativesFilename, "pass2.bin");
     std::remove("pass1.bin");
+
+    int nbOfFaces = dereferenceClusterPass3("pass2.bin", representativesFilename, outputFilename);
     std::remove("pass2.bin");
 
     return nbOfFaces;

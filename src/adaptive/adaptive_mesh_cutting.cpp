@@ -40,7 +40,7 @@ Vertex computeRepresentativeFromDualQuadric(const DualQuadric &dq) {
         return { 0.0f, 0.0f, 0.0f };
 }
 
-std::vector<CellData> meshCuttingDualQuadric(const std::string &inFilenameBinary, int resolution, bool cutTheMesh) {
+std::vector<CellData> meshCuttingDualQuadric(const std::string &inFilenameBinary, int resolution) {
 
     std::vector<CellData> cells;
 
@@ -88,13 +88,6 @@ std::vector<CellData> meshCuttingDualQuadric(const std::string &inFilenameBinary
     // Expand the bounding box by a small margin
     grid.min = grid.min - Vertex(0.1f, 0.1f, 0.1f);
     grid.max = grid.max + Vertex(0.1f, 0.1f, 0.1f);
-
-    // If only grid visualization is needed (for debugging)
-    if (!cutTheMesh) {
-        grid.displayGrid();
-        file.close();
-        return {};
-    }
 
     // Reset the stream to the end of the header
     file.clear();

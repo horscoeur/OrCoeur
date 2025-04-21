@@ -11,14 +11,6 @@ int main(int argc, char **argv) {
     // Initialize Polyscope
     polyscope::init();
 
-    // File selection dialog
-    char filename[2048] = "";
-    int resolution = 5;
-    std::vector<polyscope::PointCloud*> displayedPoints;
-    ImGui::FileBrowser fileDialog;
-    fileDialog.SetTitle("Open a mesh file");
-    fileDialog.SetTypeFilters({".obj", ".ply"});
-    bool simplfyTheMeshOutOfCore = false;
     // Apply ImGui style
     polyscope::options::configureImGuiStyleCallback = configureImGuiStyle;
 
@@ -27,11 +19,26 @@ int main(int argc, char **argv) {
 
     // Register user callback for UI
     polyscope::state::userCallback = [&]() {
-        handleFileSelection(filename, fileDialog, simplfyTheMeshOutOfCore);
-        adaptativeMeshSimplification(filename, fileDialog, displayedPoints);
-        conversionInfoPopup(filename, fileDialog);
-        simplificationOutOfCoreInfoPopup(filename, resolution);
-        simplificationInfoPopup(filename, resolution);
+        handleFileSelection();
+        loadMeshUI();
+
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 20);
+        ImGui::Separator();
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
+
+        conversionUI();
+
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 20);
+        ImGui::Separator();
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
+
+        normalMeshSimplificationUI();
+
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 20);
+        ImGui::Separator();
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
+
+        adaptiveMeshSimplificationUI();
     };
 
     // Show Polyscope GUI

@@ -8,16 +8,21 @@ BSPNode::BSPNode() : isLeaf(true), left(nullptr), right(nullptr) {
     aggregatedQuadric.data.fill(0.0f);
 }
 
+BSPNode::~BSPNode() {
+    delete left;
+    delete right;
+}
+
 // Utility function to convert a Vertex to an Eigen::Vector3f.
 Eigen::Vector3f vertexToEigen(const Vertex &v) {
     return {v.x, v.y, v.z};
 }
 
 // Computes the mean of the representatives in a vector of CellData.
-Eigen::Vector3f computeMean(const std::vector<CellData> &cells) {
+Eigen::Vector3f computeMean(const std::vector<const CellData *> &cells) {
     Eigen::Vector3f mean = Eigen::Vector3f::Zero();
     for (const auto &cell: cells) {
-        mean += vertexToEigen(cell.representative);
+        mean += vertexToEigen(cell->representative);
     }
     if (!cells.empty())
         mean /= static_cast<float>(cells.size());
@@ -25,10 +30,10 @@ Eigen::Vector3f computeMean(const std::vector<CellData> &cells) {
 }
 
 // Computes the covariance (3x3) of the representatives in cells.
-Eigen::Matrix3f computeCovariance(const std::vector<CellData> &cells, const Eigen::Vector3f &mean) {
+Eigen::Matrix3f computeCovariance(const std::vector<const CellData *> &cells, const Eigen::Vector3f &mean) {
     Eigen::Matrix3f cov = Eigen::Matrix3f::Zero();
     for (const auto &cell: cells) {
-        Eigen::Vector3f diff = vertexToEigen(cell.representative) - mean;
+        Eigen::Vector3f diff = vertexToEigen(cell->representative) - mean;
         cov += diff * diff.transpose();
     }
     if (!cells.empty())
@@ -91,7 +96,7 @@ BSPNode *BSPNode::split() {
 
     // Partition the cells based on the sign of the dot product with the normal.
     for (const auto &cell: this->cells) {
-        Eigen::Vector3f p = vertexToEigen(cell.representative);
+        Eigen::Vector3f p = vertexToEigen(cell->representative);
         const float dist = normal.dot(p) + d;
         if (dist <= 0)
             leftChild->cells.push_back(cell);
@@ -118,15 +123,15 @@ BSPNode *BSPNode::split() {
 }
 
 // Plots the BSP Tree in Polyscope.
-void BSPNode::plot(std::vector<polyscope::PointCloud *> &point_clouds, const float depth) {
+void BSPNode::plot(std::vector<polyscope::PointCloud *> &point_clouds, const float depth) const {
     if (isLeaf) {
         std::vector<std::array<double, 3> > localPoints;
         for (const auto &cell: cells) {
-            localPoints.push_back({cell.representative.x, cell.representative.y, cell.representative.z});
+            localPoints.push_back({cell->representative.x, cell->representative.y, cell->representative.z});
         }
         std::string name = "Leaf " + std::to_string(cells.size()) + " cells: (";
         for (const auto &cell: cells) {
-            name += std::to_string(cell.cellIndex) + " ";
+            name += std::to_string(cell->cellIndex) + " ";
         }
         name += ")";
         point_clouds.push_back(polyscope::registerPointCloud(name, localPoints));
@@ -146,12 +151,15 @@ bool CompareLeaf::operator()(const LeafEntry &a, const LeafEntry &b) const {
 BSPNode *buildBSPTree(const std::vector<CellData> &cells, const int targetLeafCount) {
     // Create the root node containing all cell representatives.
     auto *root = new BSPNode();
-    root->cells = cells;
+    root->cells.reserve(cells.size());
+    for (const auto &cell : cells) {
+        root->cells.push_back(&cell); // store pointer, not copy
+    }
 
     // Extract quadrics from the root cells.
     std::vector<Quadric> quadrics;
-    for (const auto &cell: cells) {
-        quadrics.push_back(cell.quadric);
+    for (const auto *cell : root->cells) {
+        quadrics.push_back(cell->quadric);
     }
 
     // Aggregate quadrics for the root and compute the optimal representative.
@@ -185,8 +193,8 @@ BSPNode *buildBSPTree(const std::vector<CellData> &cells, const int targetLeafCo
         // Add the two children to the priority queue.
         if (node->left && !node->left->cells.empty()) {
             std::vector<Quadric> quadricsLeft;
-            for (const auto &cell: node->left->cells) {
-                quadricsLeft.push_back(cell.quadric);
+            for (const auto *cell : node->left->cells) {
+                quadricsLeft.push_back(cell->quadric);
             }
             // Aggregate quadrics for the left child and compute the optimal representative.
             node->left->aggregatedQuadric = addQuadrics(quadricsLeft);
@@ -196,8 +204,8 @@ BSPNode *buildBSPTree(const std::vector<CellData> &cells, const int targetLeafCo
         }
         if (node->right && !node->right->cells.empty()) {
             std::vector<Quadric> quadricsRight;
-            for (const auto &cell: node->right->cells) {
-                quadricsRight.push_back(cell.quadric);
+            for (const auto *cell : node->right->cells) {
+                quadricsRight.push_back(cell->quadric);
             }
             // Aggregate quadrics for the right child and compute the optimal representative.
             node->right->aggregatedQuadric = addQuadrics(quadricsRight);

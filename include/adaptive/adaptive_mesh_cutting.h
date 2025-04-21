@@ -55,9 +55,7 @@ Vertex computeRepresentativeFromDualQuadric(const DualQuadric &dq);
  *
  * @param inFilenameBinary Name of the input binary file containing the mesh.
  * @param resolution Grid resolution (number of cells per dimension).
- * @param cutTheMesh If false, only displays the grid (for debugging purposes).
- * @return std::vector<CellData> Vector containing the cell data (cell index, representative, dual quadric, and quadric).
  */
-std::vector<CellData> meshCuttingDualQuadric(const std::string &inFilenameBinary, int resolution, bool cutTheMesh);
+std::vector<CellData> meshCuttingDualQuadric(const std::string &inFilenameBinary, int resolution);
 
 #endif // ADAPTATIVE_MESH_CUTTING_H

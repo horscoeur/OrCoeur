@@ -9,6 +9,7 @@
 class BSPNode {
 public:
     BSPNode();
+    ~BSPNode();
 
     bool isLeaf;
     Eigen::Vector4f splittingPlane;
@@ -17,8 +18,8 @@ public:
     Quadric aggregatedQuadric;
     Vertex representative{};
 
-    // For a leaf, store the associated cells.
-    std::vector<CellData> cells;
+    // For a leaf, store the associated cells. (references to CellData)
+    std::vector<const CellData *> cells;
 
 
     /**
@@ -59,17 +60,17 @@ public:
      * @param point_clouds Vector to store Polyscope point clouds.
      * @param depth The depth of the current node in the tree.
      */
-    void plot(std::vector<polyscope::PointCloud *> &point_clouds, float depth);
+    void plot(std::vector<polyscope::PointCloud *> &point_clouds, float depth) const;
 };
 
 // Utility function to convert a Vertex to an Eigen::Vector3f.
 Eigen::Vector3f vertexToEigen(const Vertex &v);
 
 // Computes the mean of the representatives in a vector of CellData.
-Eigen::Vector3f computeMean(const std::vector<CellData> &cells);
+Eigen::Vector3f computeMean(const std::vector<const CellData *> &cells);
 
 // Computes the covariance (3x3) of the representatives in cells.
-Eigen::Matrix3f computeCovariance(const std::vector<CellData> &cells, const Eigen::Vector3f &mean);
+Eigen::Matrix3f computeCovariance(const std::vector<const CellData *> &cells, const Eigen::Vector3f &mean);
 
 // Structure used in the priority queue (using number of cells as an error indicator).
 struct LeafEntry {

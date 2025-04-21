@@ -13,16 +13,15 @@ void resetAggregatedQuadric(BSPNode* node) {
     resetAggregatedQuadric(node->right);
 }
 
-void computeRepresentative(std::vector<Vertex>& representativeVertices, BSPNode* node) {
+void computeRepresentative(BSPNode* node) {
     if (node == nullptr) return;
 
     // Compute the representative for the current node
     node->representative = findOptimalVertex(node->aggregatedQuadric);
-    representativeVertices.push_back(node->representative);
 
     // Recursively compute the representative for child nodes
-    computeRepresentative(representativeVertices, node->left);
-    computeRepresentative(representativeVertices, node->right);
+    computeRepresentative(node->left);
+    computeRepresentative(node->right);
 }
 
 void distributeQuadrics(std::ifstream& file, const std::streampos dataStart, BSPNode* root) {
@@ -119,12 +118,10 @@ void adaptiveMeshSimplification(const std::string &inputFacesFilenameBinary, con
     distributeQuadrics(file, dataStart, root);
 
     // Iterate over the BSP tree to compute the representative of each leaf
-    std::vector<Vertex> representativeVertices;
-    computeRepresentative(representativeVertices, root);
+    computeRepresentative(root);
 
     // Write header and remember position of face_count
     outputFile << "format: binary_little_endian\n";
-    outputFile << "vertex_count: " << representativeVertices.size() << "\n";
 
     std::streampos faceCountPos = outputFile.tellp();
     outputFile << "face_count: 0000000000\n";

@@ -14,10 +14,9 @@ void resetAggregatedQuadric(BSPNode *node);
 /**
  * @brief Computes the optimal representative vertex for each leaf node in the BSP tree.
  *
- * @param representativeVertices Vector to store the computed representative vertices.
  * @param node Pointer to the current node in the BSP tree.
  */
-void computeRepresentative(std::vector<Vertex> &representativeVertices, BSPNode *node);
+void computeRepresentative(BSPNode *node);
 
 /**
  * @brief Distributes the quadrics of the faces to the aggregated quadrics of the BSP tree leaves.

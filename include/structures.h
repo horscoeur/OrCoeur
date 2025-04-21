@@ -70,6 +70,23 @@ struct Grid {
         return getIndex(getCellX(pos), getCellY(pos), getCellZ(pos));
     }
 
+    [[nodiscard]]
+    uint64_t getLinearIndex(const Vertex& v) const {
+        auto [i, j, k] = std::make_tuple(getCellX(v), getCellY(v), getCellZ(v));
+        return static_cast<uint64_t>(i) +
+               static_cast<uint64_t>(j) * resolution +
+               static_cast<uint64_t>(k) * resolution * resolution;
+    }
+
+    [[nodiscard]]
+    uint64_t getLinearIndex(const int i, const int j, const int k) const {
+        return static_cast<uint64_t>(i) +
+               static_cast<uint64_t>(j) * resolution +
+               static_cast<uint64_t>(k) * resolution * resolution;
+    }
+
+
+
     void displayGrid() {
         std::vector<Vertex> gridCenters;
 

@@ -5,47 +5,31 @@
 #include "imfilebrowser.h"
 #include "polyscope/point_cloud.h"
 
+enum SimplificationMode {
+    SIMPLIFICATION_MODE_NORMAL,
+    SIMPLIFICATION_MODE_ADAPTIVE,
+};
+
+
 /**
  * @brief Configures the ImGui color scheme and style.
  */
 void configureImGuiStyle();
 
-/**
- * @brief Handles the file selection dialog and mesh loading.
- * @param filename Buffer to store the selected file path.
- * @param fileDialog ImGui file browser instance.
- * @param displayedPoints Vector containing the displayed point clouds. (adaptative mesh simplification)
- */
-void handleFileSelection(char* filename, ImGui::FileBrowser& fileDialog, bool &simplifyTheMeshOutOfCore, std::vector<polyscope::PointCloud*> &displayedPoints);
+void handleFileSelection();
 
-/**
- * @brief Handles the mesh adaptative simplification.
- * @param filename Buffer to store the selected file path.
- * @param fileDialog ImGui file browser instance.
- * @param displayedPoints Vector containing the displayed point clouds.
- */
-void adaptativeMeshSimplification (char* filename, ImGui::FileBrowser& fileDialog, std::vector<polyscope::PointCloud*> &displayedPoints);
+void loadMeshUI();
+void conversionUI();
+void normalMeshSimplificationUI();
+void adaptiveMeshSimplificationUI();
 
-/**
- * @brief Displays the main conversion popup window.
- * @param filename The selected file path.
- * @param fileDialog ImGui file browser instance.
- */
-void conversionInfoPopup(char* filename, ImGui::FileBrowser& fileDialog);
+void normalMeshSimplificationPipeline(std::string &outputFilenameOBJ);
+void adaptiveMeshSimplificationPipeline(std::string &outputFilenameOBJ);
 
-/**
- * @brief Displays the mesh simplification popup window.
- * @param filename The selected file path.
- * @param resolution The resolution of the simplification.
- */
-void simplificationOutOfCoreInfoPopup(char* filename, int &resolution);
+// Debugging functions
+void visualizeLeafs();
 
-/**
- * @brief Displays the mesh simplification popup window.
- * @param filename The selected file path.
- * @param resolution The resolution of the cutting.
- */
-void simplificationInfoPopup(char* filename, int &resolution);
+void convertToObjSoup(const std::string &outputFilenameBinary);
 
 /**
  * @brief Loads a mesh from the given file path.

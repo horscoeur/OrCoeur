@@ -1,7 +1,7 @@
 
 #include "mesh_cutting.h"
 
-bool meshCutting(const std::string &inFilenameBinary, std::string &outputFilenamePlaneEquation, std::string &outputFilenameTriangleCluster, int resolution, bool cutTheMesh) {
+bool meshCutting(const std::string &inFilenameBinary, const std::string &outputFilenamePlaneEquation, const std::string &outputFilenameTriangleCluster, int resolution, bool cutTheMesh) {
     // Open the input file
     std::ifstream file(inFilenameBinary, std::ios::binary);
     if (!file.is_open()) {

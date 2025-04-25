@@ -30,6 +30,20 @@ struct Vertex {
     Vertex operator-(const Vertex& v) const{
         return {x-v.x, y-v.y, z-v.z};
     }
+
+    // Operator overloads for vector multiplication
+    [[nodiscard]]
+    bool operator<(Vertex const& o) const {
+        if      (x < o.x) return true;
+        else if (x > o.x) return false;
+        if      (y < o.y) return true;
+        else if (y > o.y) return false;
+        return z < o.z;
+    }
+    [[nodiscard]]
+    bool operator==(const Vertex& vertex) const {;
+        return (x == vertex.x && y == vertex.y && z == vertex.z);
+    }
 };
 
 /**

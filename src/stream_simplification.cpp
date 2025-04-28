@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <vector>
 #include <unistd.h>
+#include <glm/glm.hpp>
 
 #include "stream_simplification.h"
 #include <polyscope/surface_mesh.h>
@@ -60,11 +61,11 @@ void displayFromInputFile(const std::string& inputFilePath, int startIndex, int 
     std::vector<std::array<float, 3>> unReadVertices;
     std::vector<std::array<int, 3>> unReadFaces;
 
-    std::cout << "Extract vertices from : " << inputFilePath << std::endl;
+    //std::cout << "Extract vertices from : " << inputFilePath << std::endl;
 
     std::vector<TriangleCoordinates> unReadTriangles = extractTrianglesFromBinary(inputFilePath, startIndex, endIndex);
 
-    std::cout << "Triangles extracted FROM INPUT : " << unReadTriangles.size() << std::endl;
+    //std::cout << "Triangles extracted FROM INPUT : " << unReadTriangles.size() << std::endl;
     if (unReadTriangles.size() != 0) {
         for (int i = 0; i < unReadTriangles.size(); i++) {
             unReadVertices.push_back({unReadTriangles[i].v1.x, unReadTriangles[i].v1.y, unReadTriangles[i].v1.z});
@@ -83,12 +84,11 @@ void displayFromOutputFile(const std::string& outputFilePath, int startIndex, in
     std::vector<std::array<float, 3>> writtenVertices;
     std::vector<std::array<int, 3>> writtenFaces;
 
-    std::cout << "Extract vertices from : " << outputFilePath << std::endl;
+    //std::cout << "Extract vertices from : " << outputFilePath << std::endl;
 
-    std::vector<TriangleCoordinates> writtenTriangles =
-        extractTrianglesFromBinary(outputFilePath, startIndex, endIndex);
+    std::vector<TriangleCoordinates> writtenTriangles = extractTrianglesFromBinary(outputFilePath, startIndex, endIndex);
 
-    std::cout << "Triangles extracted FROM OUTPUT: " << writtenTriangles.size() << std::endl;
+    //std::cout << "Triangles extracted FROM OUTPUT: " << writtenTriangles.size() << std::endl;
     if (writtenTriangles.size() != 0) {
         for (int i = 0; i < writtenTriangles.size(); i++) {
             writtenVertices.push_back({writtenTriangles[i].v1.x, writtenTriangles[i].v1.y, writtenTriangles[i].v1.z});
@@ -149,22 +149,24 @@ bool streamSimplificationVisualization(const std::string& inputFileName, const s
 
     StreamMeshData meshData = StreamMeshData();
 
-    // modif la facon dont les triangles sont trié dans le bianire en prennant le barycentre
-    initBuffer(inputFile, maxTrianglesInBuffer * 0.5, decimationPercentage,meshData);
-    // float R = trianglesInCore / trianglesRead - (trianglesWritten/decimationPercentage);
+    initBuffer(inputFile, maxTrianglesInBuffer * 0.5, decimationPercentage, meshData);
+    float R = meshData.inCoreTriangleBuffer.size() / nbTrianglesRead - (nbTrianglesWritten/decimationPercentage);
 
+    /*
     std::cout << "======INIT======" << std::endl;
     std::cout << "Read : " << nbTrianglesRead << std::endl;
+    std::cout << "Written : "<< nbTrianglesRead << std::endl;
     std::cout << "In Core : " << meshData.inCoreTriangleBuffer.size() << std::endl;
     std::cout << "======START LOOP======" << std::endl;
-
+    */
 
     while (!inputFile.eof()) {
+        std::cout << "Reading " << maxTrianglesInBuffer * 0.5 << " Faces from inputfile\n";
         read(inputFile, maxTrianglesInBuffer * 0.5, meshData);
-        std::cout << "In Core : " << meshData.inCoreTriangleBuffer.size() << std::endl;
-        std::cout << "Written  : " << nbTrianglesWritten << std::endl;
 
-        // decimate ((1-decimationPercentage) * maxTrianglesInBuffer / 4)
+        int nb_decimated = (1-decimationPercentage) * maxTrianglesInBuffer / 4;
+        std::cout << "Nb to be decimated : " << nb_decimated << std::endl;
+        decimate (nb_decimated, meshData);
 
         if (visualizeSimplification) {
             displayFromOutputFile(outputFileName, 0, nbTrianglesWritten);
@@ -174,15 +176,23 @@ bool streamSimplificationVisualization(const std::string& inputFileName, const s
             }
             polyscope::show();
         }
+
         if (meshData.inCoreTriangleBuffer.size() == nbTriangleTotal) {
             std::cout << "All triangles read, exiting loop." << std::endl;
+            break;
         }
-        std::cout << "====== Je suis à la fin de cette boucle ======" << std::endl;
-        std::cout << "L'etat de input file est de " << inputFile.eof() << std::endl;
+
+        //std::cout << "====== Je suis à la fin de cette boucle ======" << std::endl;
+        //std::cout << "L'etat de input file est de " << inputFile.eof() << std::endl;
+        if (inputFile.eof()) {
+            std::cout << "End of file reached." << std::endl;
+            break;
+        }
         // normalement write(outputFile, inCoreTriangleBuffer, maxTrianglesInBuffer * 0.5, &nbTrianglesWritten, &nbTrianglesInCore);
         //write(outputFile, inCoreTriangleBuffer, nbTrianglesInCore, &nbTrianglesWritten, &nbTrianglesInCore);
     }
-    decimate(decimationPercentage, meshData);
+    
+    //decimate((1-decimationPercentage * (1/decimationPercentage)) * maxTrianglesInBuffer / 4, meshData);
 
     // ici quand on vide le buffer, il faut faire un truc (voir papier)
     if (meshData.inCoreTriangleBuffer.size() > 0) {
@@ -200,10 +210,10 @@ bool streamSimplificationVisualization(const std::string& inputFileName, const s
     return true;
 }
 
-// alterne reading / decimations until R == p
+
 bool initBuffer(std::ifstream& inputFile, int numberToRead, float decimationPercentage,
                 StreamMeshData& meshData) {
-    // skip le header
+
     std::string line;
     while (std::getline(inputFile, line)) {
         if (line == "END_HEADER")
@@ -211,14 +221,14 @@ bool initBuffer(std::ifstream& inputFile, int numberToRead, float decimationPerc
     }
 
     int n = 1.0f / decimationPercentage;
-    std::cout << " n : " << n << std::endl;
     read(inputFile, numberToRead, meshData);
+    int numberToDecimate = numberToRead * 0.5;
+    for (int i=0; i < n-1; i++) {
+        read(inputFile, numberToRead, meshData);
+        decimate(numberToDecimate, meshData);
+    }
 
-    // for (int i=0; i < n; i++) {
-    // inputFile.read(reinterpret_cast<char*>(inCoreTriangleBuffer.data()), (maxTrianglesInBuffer/2) * sizeof(TriangleCoordinates));
-    // decimate(inCoreTriangleBuffer, maxTrianglesInBuffer/4);
-    //}
-
+    //std::cout << "In Core : " << meshData.inCoreTriangleBuffer.size() << std::endl;
     // apres init buffer on devrait avoir lu au total n/2 n/2 Nmax triangles et ecrit 0
     return true;
 }
@@ -249,7 +259,7 @@ void updateAdjacency(int vertexId, int neighborId, StreamMeshData& meshData) {
 }
 
 bool read(std::ifstream& inputFile,int numberToRead, StreamMeshData& meshData) {
-    std::cout << "Reading " << numberToRead << " Faces from inputfile\n";
+    //std::cout << "Reading " << numberToRead << " Faces from inputfile\n";
 
     TriangleCoordinates triangle;
     for (int i = 0; i < numberToRead; ++i) {
@@ -310,6 +320,137 @@ bool write(std::ofstream& outputFile, std::map<int, TriangleCoordinates>& inCore
     return true;
 }
 
+
+void removeCommonTriangles(int vertexA, int vertexB, StreamMeshData& meshData) {
+    // List of common triangles
+    std::vector<int> commonTriangles;
+    
+    std::vector<int>& trianglesVertexA = meshData.triangleList[vertexA];
+    std::vector<int>& trianglesVertexB = meshData.triangleList[vertexB];
+    
+    // Loops through the triangles (they need to be sorted)
+    size_t i = 0, j = 0;
+    while (i < trianglesVertexA.size() && j < trianglesVertexB.size()) {
+        // if they have the same triangle push it to commonTriangles
+        if (trianglesVertexA[i] == trianglesVertexB[j]) {
+            commonTriangles.push_back(trianglesVertexA[i]);
+            i++; j++;
+        } 
+        else if (trianglesVertexA[i] < trianglesVertexB[j]) {
+            i++;
+        } 
+        else {
+            j++;
+        }
+    }
+    
+    // Removes the common triangles 
+    for (int triangleId : commonTriangles) {
+        for (int v : {vertexA, vertexB}) { // surprime les triangles de vertexA et vertexB. TODO : le faire aussi dans le 3eme sommet
+            auto &list = meshData.triangleList[v];
+            list.erase(std::remove(list.begin(), list.end(), triangleId), list.end());
+        }
+        meshData.inCoreTriangleBuffer.erase(triangleId);
+    }
+}
+
+
+bool isCollapseValid(int vertexA, int vertexB, Vertex &positionAfterCollapse, StreamMeshData &meshData)
+{
+    // check connectivity
+    std::vector<int> &trianglesIdVertexA = meshData.triangleList[vertexA];
+    std::vector<int> &trianglesIdVertexB = meshData.triangleList[vertexB];
+
+    std::vector<int> commonTriangles;
+
+    std::set_intersection(trianglesIdVertexA.begin(), trianglesIdVertexA.end(),
+                          trianglesIdVertexB.begin(), trianglesIdVertexB.end(),
+                          std::back_inserter(commonTriangles));
+
+    if (commonTriangles.size() != 2)
+    {
+        return false;
+    }
+
+    std::vector<int> survivingTriangles;
+    std::set_difference(trianglesIdVertexA.begin(), trianglesIdVertexA.end(),
+                       commonTriangles.begin(), commonTriangles.end(),
+                       std::back_inserter(survivingTriangles));
+    std::set_difference(trianglesIdVertexB.begin(), trianglesIdVertexB.end(),
+                       commonTriangles.begin(), commonTriangles.end(),
+                       std::back_inserter(survivingTriangles));
+
+    /*
+    std::cout << "Checking collapse of edge (" << vertexA << "," << vertexB << ") to position ("
+              << positionAfterCollapse.x << "," << positionAfterCollapse.y << "," 
+              << positionAfterCollapse.z << ")\n";
+    */
+
+    // TODO : recuperer juste la position des vertices qui seront affectés par le collapse (ca récup tout)
+    std::vector<Vertex> positions(meshData.actual_unique_id);
+    for (auto &kv : meshData.vertexMap)
+    {
+        positions[kv.second] = kv.first;
+    }
+
+    std::vector<int> notCommonTriangles;
+    std::set_symmetric_difference(trianglesIdVertexA.begin(), trianglesIdVertexA.end(),
+                        trianglesIdVertexB.begin(), trianglesIdVertexB.end(),
+                        std::back_inserter(notCommonTriangles));
+
+    // lambda pour calculer la normale d'un triangle
+    auto computeNormal = [&](int triangleId, const std::vector<Vertex> &pos)
+    {
+        const auto &tri = meshData.inCoreTriangleBuffer[triangleId];
+        
+        int idx0 = meshData.vertexMap[tri.v1];
+        int idx1 = meshData.vertexMap[tri.v2];
+        int idx2 = meshData.vertexMap[tri.v3];
+        
+        const Vertex &p0 = pos[idx0];
+        const Vertex &p1 = pos[idx1];
+        const Vertex &p2 = pos[idx2];
+        
+        /*
+        std::cout << "Triangle " << triangleId << " vertices:\n"
+                  << "  v0: (" << p0.x << "," << p0.y << "," << p0.z << ")\n"
+                  << "  v1: (" << p1.x << "," << p1.y << "," << p1.z << ")\n"
+                  << "  v2: (" << p2.x << "," << p2.y << "," << p2.z << ")\n";
+        */
+        glm::vec3 e1 = glm::vec3(p1.x - p0.x, p1.y - p0.y, p1.z - p0.z);
+        glm::vec3 e2 = glm::vec3(p2.x - p0.x, p2.y - p0.y, p2.z - p0.z);
+        
+        glm::vec3 normal = glm::cross(e1, e2);
+        normal = glm::normalize(normal);
+        
+        //std::cout << "  normal: (" << normal.x << "," << normal.y << "," << normal.z << ")\n";
+        return normal;
+    };
+
+    std::unordered_map<int, glm::vec3> originalNormals;
+    for (int t : notCommonTriangles){
+        originalNormals[t] = computeNormal(t, positions);
+        //std::cout << "Normal of triangle " << t << " : " << originalNormals[t].x << " " << originalNormals[t].y << " " << originalNormals[t].z << std::endl;
+    }
+
+    auto newPos = positions;
+    newPos[vertexA] = positionAfterCollapse;
+    newPos[vertexB] = positionAfterCollapse;
+
+    for (int t : survivingTriangles)
+    {
+        glm::vec3 n0 = originalNormals[t];
+        glm::vec3 n1 = computeNormal(t, newPos);
+        float dot = glm::dot(n0, n1);
+        //std::cout << "Triangle " << t << " dot product: " << dot << "\n";
+        if (dot < 0){
+            //std::cout << "Collapse invalid due to triangle " << t << " flipping.\n";
+            return false;
+        } 
+    }
+
+    return true;
+}
 
 void decimatePartAdjacencyListAlreadySeen(StreamMeshData& meshData, int vertexA, int vertexB,
                                           int newIndice, int oldIndice) {
@@ -472,6 +613,7 @@ void findCoordInVertexMap(StreamMeshData& meshData, int vertexA, int vertexB, in
     }
 }
 
+
 void decimatePartTriangle(StreamMeshData& meshData, int vertexA, int vertexB, int newIndice,
                           int oldIndice, Vertex& coordVertexA, Vertex& coordVertexB,
                           Vertex& coordNewIndice) {
@@ -571,8 +713,6 @@ void decimatePartTriangle(StreamMeshData& meshData, int vertexA, int vertexB, in
     meshData.triangleList[newIndice] = trianglesToNewIndice;
 }
 
-
-// /!\ WARNING /!\ WE NEED TO KEEP THE ADJACENCY LISTS SORTED IN ORDER TO KEEP THE ALGORITHM WORKING
 bool decimateThisEdge(int vertexA, int vertexB, StreamMeshData& meshData) {
     // I made the assumption that we will always take the smallest index of the two
     // no matter if it's vertexA that we remove or vertexB,
@@ -605,6 +745,8 @@ bool decimateThisEdge(int vertexA, int vertexB, StreamMeshData& meshData) {
     findCoordInVertexMap(meshData, vertexA, vertexB, newIndice, coordVertexA,
                          coordVertexB, coordNewIndice);
 
+    removeCommonTriangles(vertexA, vertexB, meshData);
+
     // Part Decimate TriangleList : to update the triangle list of the new vertex and the triangles coordinates
     decimatePartTriangle(meshData, vertexA, vertexB, newIndice, oldIndice, coordVertexA,
                          coordVertexB, coordNewIndice);
@@ -627,30 +769,101 @@ bool decimateThisEdge(int vertexA, int vertexB, StreamMeshData& meshData) {
     return true;
 }
 
+int getRandomNeighborNotInBorder(int vertex, StreamMeshData& meshData) {
+    std::vector<int> & neighbors = meshData.adjacencyListAlreadySeen[vertex];
+    if (neighbors.empty()) {
+        return -1; 
+    }
+
+    std::vector<int> neighborsNotInBorder;
+    for (int neighbor : neighbors) {
+        if (std::find(meshData.vertexNotInBorder.begin(),
+                      meshData.vertexNotInBorder.end(),
+                      neighbor) != meshData.vertexNotInBorder.end()) {
+            neighborsNotInBorder.push_back(neighbor);
+        }
+    }
+    if (neighborsNotInBorder.empty()) {
+        return -1; 
+    }
+
+    int randomIndex = rand() % neighborsNotInBorder.size();
+    return neighborsNotInBorder[randomIndex];
+}
+
 // Sert comme premier test, mais a modifié ainsi que les paramètres d'entrée et autre
-bool decimate(float decimationPercentage, StreamMeshData& meshData) {
-    int indiceRandomInVertexNotInBorder = rand() % meshData.vertexNotInBorder.size();
-    int vertexToRemove = meshData.vertexNotInBorder[indiceRandomInVertexNotInBorder];
-    //On choisit parmi ces voisins un voisin aléatoire qui est dans vertexNotInBorder en procédant aléatoirement par élimination
-    std::vector<int> neighbors = meshData.adjacencyListAlreadySeen[vertexToRemove];
-    int indiceRandomInNeighbors = rand() % neighbors.size();
-    int neighborToRemove = neighbors[indiceRandomInNeighbors];
-    while (neighbors.size() > 0 && std::find(meshData.vertexNotInBorder.begin(), meshData.vertexNotInBorder.end(),
-                                             neighborToRemove) == meshData.vertexNotInBorder.end()) {
-        // On retire le voisin de la liste
-        neighbors.erase(neighbors.begin() + indiceRandomInNeighbors);
-        // On choisit un voisin aléatoire parmi les voisins restants
-        indiceRandomInNeighbors = rand() % neighbors.size();
-        neighborToRemove = neighbors[indiceRandomInNeighbors];
+bool decimate(int nbToDecimate, StreamMeshData &meshData)
+{
+    if (meshData.vertexNotInBorder.size() == 0)
+    {
+        std::cout << "No vertex not in border, nothing to decimate." << std::endl;
+        return true;
     }
-    if (neighbors.size() == 0) {
-        std::cerr << "Error: No valid neighbor found to remove." << std::endl;
-        return false;
+    int decimated = 0;
+
+    const int NUM_CANDIDATES = 15;
+
+    for (size_t i = 0; i < nbToDecimate - 1; i++)
+    {
+        float bestError = std::numeric_limits<float>::max();
+        int bestVertexA = -1;
+        int bestVertexB = -1;
+
+        for (size_t j = 0; j < NUM_CANDIDATES; j++)
+        {
+            int indiceRandomInVertexNotInBorder = rand() % meshData.vertexNotInBorder.size();
+            int vertexA = meshData.vertexNotInBorder[indiceRandomInVertexNotInBorder];
+            int vertexB = getRandomNeighborNotInBorder(vertexA, meshData);
+            if (vertexB == -1) {
+                //std::cout << "No neighbor not in border for vertex " << vertexA << std::endl;
+                continue;
+            }
+
+            int indexNewVertex;
+            Vertex coordVertexA, coordVertexB, coordNewVertex;
+            findCoordInVertexMap(meshData, vertexA, vertexB, indexNewVertex, coordVertexA, coordVertexB, coordNewVertex);
+
+            if (vertexA < vertexB){
+                coordNewVertex = coordVertexA;
+            }else {
+                coordNewVertex = coordVertexB;
+            }
+
+            //coordNewVertex = findOptimalVertex(combinedQuadric, coordVertexA, coordVertexB);
+            //std::cout << "New vertex position: (" << coordNewVertex.x << "," << coordNewVertex.y << "," << coordNewVertex.z << ")\n";
+
+            if(!isCollapseValid(vertexA, vertexB, coordNewVertex, meshData)){
+                /*
+                std::cout << "Collapse invalid for edge (" << vertexA << "," << vertexB << ") to position ("
+                          << coordNewVertex.x << "," << coordNewVertex.y << "," 
+                          << coordNewVertex.z << ")\n";
+                */
+                continue;
+            };
+
+
+
+            Quadric combinedQuadric = addQuadric(meshData.triangleQuadricMap[vertexA], meshData.triangleQuadricMap[vertexB]);
+
+            float error = evaluateError(combinedQuadric, coordNewVertex);
+
+            if (error <= bestError)
+            {
+                bestError = error;
+                bestVertexA = vertexA;
+                bestVertexB = vertexB;
+            }
+        }
+
+        if (bestVertexA != -1 && bestVertexB != -1)
+        {
+            decimateThisEdge(bestVertexA, bestVertexB, meshData);
+            //std::cout << "Decimated edge (" << bestVertexA << "," << bestVertexB << ") with error " << bestError << std::endl;
+            decimated++;
+        }
     }
+    
 
-    std::cout << "Vertex to remove: " << vertexToRemove << std::endl;
-    std::cout << "Neighbor to remove: " << neighborToRemove << std::endl;
-
-    decimateThisEdge(vertexToRemove, neighborToRemove, meshData);
+    std::cout << "Decimated " << decimated << " edges." << std::endl;
     return true;
 }

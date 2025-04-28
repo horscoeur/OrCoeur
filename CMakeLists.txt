@@ -34,45 +34,35 @@ file(GLOB IMGUI_SOURCES
     ${CMAKE_SOURCE_DIR}/external/polyscope/deps/imgui/imgui/*.cpp
 )
 
-# Automatic retrieval of source files
-file(GLOB_RECURSE SOURCES src/*.cpp)
-
-# Print the list of source files for debugging
-message(STATUS "Source files: ${SOURCES}")
-
 # Automatic retrieval of header files
 file(GLOB_RECURSE HEADERS include/*.h)
 
-# Add the main executable
-add_executable(OrCoeur ${SOURCES} ${HEADERS} ${IMGUI_SOURCES})
+# Liste tous les fichiers sources sauf main.cpp
+file(GLOB_RECURSE PROJECT_SOURCES src/*.cpp)
+list(REMOVE_ITEM PROJECT_SOURCES ${CMAKE_SOURCE_DIR}/src/main.cpp)
 
-# Add DEBUG flag to enable debug mode
-target_compile_definitions(OrCoeur PRIVATE -DDEBUG)
+# Crée une bibliothèque statique avec le code commun
+add_library(orcoeur_lib STATIC ${PROJECT_SOURCES})
 
-# Link Polyscope and Eigen to the executable (using consistent PRIVATE keyword)
-target_link_libraries(OrCoeur PRIVATE polyscope Eigen3::Eigen)
+target_link_libraries(orcoeur_lib PRIVATE polyscope Eigen3::Eigen)
 
-# Option to activate the tests (disabled by default)
-option(ORCOEUR_BUILD_TESTS "Build unit tests" OFF)
+# Exécutable principal
+add_executable(OrCoeur src/main.cpp ${HEADERS} ${IMGUI_SOURCES})
+target_link_libraries(OrCoeur PRIVATE orcoeur_lib)
+
+# Tests
+option(ORCOEUR_BUILD_TESTS "Build unit tests" ON)
 if(ORCOEUR_BUILD_TESTS)
     enable_testing()
-
-    # Use FetchContent to automatically download and build Catch2
     FetchContent_Declare(
-            catch2
-            GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-            GIT_TAG v3.4.0
+        catch2
+        GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+        GIT_TAG v3.4.0
     )
     FetchContent_MakeAvailable(catch2)
-
-    # Automatic retrieval of test source files
     file(GLOB_RECURSE TEST_SOURCES tests/*.cpp)
-
-    # Add the test executable
     add_executable(tests ${TEST_SOURCES})
-    target_link_libraries(tests PRIVATE Catch2::Catch2WithMain Eigen3::Eigen)
-
-    # Automatic test discovery with Catch2
+    target_link_libraries(tests PRIVATE orcoeur_lib Catch2::Catch2WithMain Eigen3::Eigen)
     include(CTest)
     include(Catch)
     catch_discover_tests(tests)

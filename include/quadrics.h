@@ -199,26 +199,125 @@ inline Vertex findOptimalVertex(const Quadric& quadric) {
         result = A.fullPivLu().solve(b);
         return {result(0), result(1), result(2)};
     } else {
-        // Use SVD to solve 
-        Eigen::JacobiSVD<Eigen::Matrix3f> svd(A, Eigen::ComputeFullU | Eigen::ComputeFullV);
-        result = svd.solve(b);
-        
-        // Check if the result is valid
-        bool valid = true;
-        for (int i = 0; i < 3; ++i) {
-            if (std::isnan(result(i))) {
-                valid = false;
-                break;
+        // Use LDLT to solve
+        Eigen::LDLT<Eigen::Matrix3f> ldlt(A);
+        if (ldlt.info() == Eigen::Success) {
+            result = ldlt.solve(b);
+            
+            // Check if the result is valid
+            bool valid = true;
+            for (int i = 0; i < 3; ++i) {
+                if (std::isnan(result(i))) {
+                    valid = false;
+                    break;
+                }
+            }
+            
+            if (valid) {
+                return {result(0), result(1), result(2)};
             }
         }
         
-        if (valid) {
-            return {result(0), result(1), result(2)};
-        } else {
-            return {0.0f, 0.0f, 0.0f};
+        return {0.0f, 0.0f, 0.0f};
+    }
+
+} 
+
+inline bool isOnEdge(const Vertex &point, const Vertex &vertexA, const Vertex &vertexB)
+{
+    if (point.x < std::min(vertexA.x, vertexB.x) || point.x > std::max(vertexA.x, vertexB.x))
+    {
+        return false;
+    }
+    if (point.y < std::min(vertexA.y, vertexB.y) || point.y > std::max(vertexA.y, vertexB.y))
+    {
+        return false;
+    }
+    if (point.z < std::min(vertexA.z, vertexB.z) || point.z > std::max(vertexA.z, vertexB.z))
+    {
+        return false;
+    }
+
+    Vertex vecAP = {
+        point.x - vertexA.x,
+        point.y - vertexA.y,
+        point.z - vertexA.z};
+
+    Vertex vecAB = {
+        vertexB.x - vertexA.x,
+        vertexB.y - vertexA.y,
+        vertexB.z - vertexA.z};
+    
+    float lengthAB = sqrt(vecAB.x*vecAB.x + vecAB.y*vecAB.y + vecAB.z*vecAB.z);
+    
+    float crossX = vecAP.y * vecAB.z - vecAP.z * vecAB.y;
+    float crossY = vecAP.z * vecAB.x - vecAP.x * vecAB.z;
+    float crossZ = vecAP.x * vecAB.y - vecAP.y * vecAB.x;
+
+    float crossMagnitude = sqrt(crossX*crossX + crossY*crossY + crossZ*crossZ);
+
+    if (crossMagnitude / lengthAB > 1e-6) {
+        return false; 
+    }
+
+    return true;
+}
+
+inline Vertex findOptimalVertex(const Quadric& quadric, const Vertex& vertexA, const Vertex& vertexB) {
+    // Extract the 3x3 upper-left submatrix A
+    Eigen::Matrix3f A;
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            A(i, j) = quadric(i, j); 
         }
     }
-} 
+    
+    // Extract the right side vector -b 
+    Eigen::Vector3f b;
+    b(0) = -quadric(0, 3);  
+    b(1) = -quadric(1, 3); 
+    b(2) = -quadric(2, 3);  
+    
+    // Try to solve the system A*x = b
+    Eigen::Vector3f result;
+    
+    // Check if matrix is invertible 
+    Eigen::FullPivLU<Eigen::Matrix3f> lu(A);
+    if (lu.isInvertible()) {
+        // Matrix is invertible, solve the system
+        result = A.fullPivLu().solve(b);
+        return {result(0), result(1), result(2)};
+    } else {
+        // Use LDLT to solve
+        Eigen::LDLT<Eigen::Matrix3f> ldlt(A);
+        if (ldlt.info() == Eigen::Success) {
+            result = ldlt.solve(b);
+            
+            // Check if the result is valid
+            bool valid = true;
+            for (int i = 0; i < 3; ++i) {
+                if (std::isnan(result(i))) {
+                    valid = false;
+                    break;
+                }
+            }
+            
+            if (valid) {
+                Vertex resultVertex = {result(0), result(1), result(2)};
+                if (isOnEdge(resultVertex, vertexA, vertexB)) {
+                    return resultVertex;
+                } else
+                {
+                    return {(vertexA.x + vertexB.x)/2.0f, (vertexA.y + vertexB.y)/2.0f, (vertexA.z + vertexB.z)/2.0f};
+                }
+            }
+        }
+        
+        return {(vertexA.x + vertexB.x)/2.0f, (vertexA.y + vertexB.y)/2.0f, (vertexA.z + vertexB.z)/2.0f};
+    }
+
+}
+
 
 
 #endif // QUADRIC_CALCULATOR_H

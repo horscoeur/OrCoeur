@@ -165,9 +165,11 @@ void decimatePartTriangle(StreamMeshData& meshData,int vertexA,int vertexB,int n
  * @param meshData   Reference to the mesh data (adjacency lists, triangle data, quadric map, etc.).
  * @return           true on success, false if any step fails (e.g., missing coordinates).
  */
+bool decimateThisEdge(int vertexA, int vertexB, Vertex & position, StreamMeshData& meshData);
+
 bool decimateThisEdge(int vertexA, int vertexB, StreamMeshData& meshData);
 
-bool decimate(float decimationPercentage, StreamMeshData &meshData);// TODO CHange that
+bool decimate(int numberToDecimate, StreamMeshData &meshData);// TODO CHange that
 
 bool write(std::ofstream &outputFile, std::map<int,TriangleCoordinates> & trianglesInCoreBuffer, int numberToWrite, int *trianglesWritten);
 
@@ -175,6 +177,6 @@ bool initBuffer(std::ifstream& inputFile, int numberToRead, float decimationPerc
 
 void displayFromBuffer(std::vector<TriangleCoordinates> & inCoreTriangleBuffer);
 
-
+bool isCollapseValid(int vertexA, int vertexB, Vertex &positionAfterCollapse, StreamMeshData &meshData);
 
 #endif

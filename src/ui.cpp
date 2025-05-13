@@ -271,7 +271,7 @@ void streamSimplificationPopup() {
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 2);
 
         static int maxTrianglesInBuffer= 1000;
-        static float decimationPercentage = 0.2;
+        static float decimationPercentage = 1.0;
         static bool visualize = true;
         static const char* axes[] = { "X Axis", "Y Axis", "Z Axis" };  
         static int currentAxisIndex = 0; 

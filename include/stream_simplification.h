@@ -18,6 +18,9 @@ struct StreamMeshData {
     // Map to store the vertex indices that are not in the border
     std::vector<int> vertexNotInBorder;
 
+    // Map to store if the vertex has been simplified
+    std::map<int, bool> vertexSimplified;
+
     // Map to store the triangle coordinates in core memory
     std::map<int,TriangleCoordinates> inCoreTriangleBuffer;
     // Map to store the quadric error metric for each triangle
@@ -34,6 +37,7 @@ struct StreamMeshData {
         triangleList = std::map<int, std::vector<int>>();
         triangleQuadricMap = std::map<int, Quadric>();
         unique_triangle_index = 0;
+        vertexSimplified = std::map<int, bool>();
     }
 };
 
@@ -171,12 +175,17 @@ bool decimateThisEdge(int vertexA, int vertexB, StreamMeshData& meshData);
 
 bool decimate(int numberToDecimate, StreamMeshData &meshData);// TODO CHange that
 
-bool write(std::ofstream &outputFile, std::map<int,TriangleCoordinates> & trianglesInCoreBuffer, int numberToWrite, int *trianglesWritten);
+bool write(std::ofstream &outputFile, StreamMeshData &meshData, int numberToWrite, int *trianglesWritten);
 
 bool initBuffer(std::ifstream& inputFile, int numberToRead, float decimationPercentage,StreamMeshData &meshData);
 
 void displayFromBuffer(std::vector<TriangleCoordinates> & inCoreTriangleBuffer);
 
+void displayBorderTriangles(StreamMeshData &meshData);
+
 bool isCollapseValid(int vertexA, int vertexB, Vertex &positionAfterCollapse, StreamMeshData &meshData);
+
+
+int getRandomNeighborNotInBorder(StreamMeshData &meshData);
 
 #endif

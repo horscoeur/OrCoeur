@@ -80,13 +80,13 @@ void displayFromInputFile(const std::string& inputFilePath, int startIndex, int 
     }
 }
 
-void displayFromOutputFile(const std::string& outputFilePath, int startIndex, int endIndex) {
+void displayFromOutputFile(const std::string& outputFilePath) {
     std::vector<std::array<float, 3>> writtenVertices;
     std::vector<std::array<int, 3>> writtenFaces;
 
     //std::cout << "Extract vertices from : " << outputFilePath << std::endl;
 
-    std::vector<TriangleCoordinates> writtenTriangles = extractTrianglesFromBinary(outputFilePath, startIndex, endIndex);
+    std::vector<TriangleCoordinates> writtenTriangles = extractTrianglesFromBinary(outputFilePath);
 
     //std::cout << "Triangles extracted FROM OUTPUT: " << writtenTriangles.size() << std::endl;
     if (writtenTriangles.size() != 0) {
@@ -100,6 +100,8 @@ void displayFromOutputFile(const std::string& outputFilePath, int startIndex, in
         polyscope::registerSurfaceMesh("Out of core mesh", writtenVertices, writtenFaces);
         auto meshPtr2 = polyscope::getSurfaceMesh("Out of core mesh");
         meshPtr2->setSurfaceColor(glm::vec3(0.2, 0.8, 0.2));
+    }else {
+        std::cout << "No triangles extracted from output file." << std::endl;
     }
 }
 
@@ -119,6 +121,19 @@ void displayFromBuffer(std::map<int, TriangleCoordinates>& inCoreTriangleBuffer)
     meshPtr2->setSurfaceColor(glm::vec3(0.8, 0.2, 0.2));
 }
 
+void writeRemainingTriangles(std::ofstream& outputFile, StreamMeshData& meshData) {
+    if (!outputFile.is_open()) {
+        std::cerr << "Error: Output file not open for writing remaining triangles." << std::endl;
+        return;
+    }
+
+    // Write the remaining triangles in the buffer to the output file
+    for (const auto& triangle : meshData.inCoreTriangleBuffer) {
+        outputFile.write(reinterpret_cast<const char*>(&triangle.second), sizeof(TriangleCoordinates));
+        meshData.inCoreTriangleBuffer.erase(triangle.first);
+    }
+}
+
 bool streamSimplificationVisualization(const std::string& inputFileName, const std::string& outputFileName,
                                        int maxTrianglesInBuffer, float decimationPercentage,
                                        bool visualizeSimplification) {
@@ -131,6 +146,7 @@ bool streamSimplificationVisualization(const std::string& inputFileName, const s
         std::cout << "Input file " << inputFileName << " oppened" << ".\n";
     }
 
+    std::remove(outputFileName.c_str());  // Supprime le fichier s'il existe
     std::ofstream outputFile(outputFileName, std::ios::binary | std::ios::app);
     if (!outputFile.is_open()) {
         std::cerr << "Error: Could not open file " << outputFileName << ".\n";
@@ -150,7 +166,7 @@ bool streamSimplificationVisualization(const std::string& inputFileName, const s
     StreamMeshData meshData = StreamMeshData();
 
     initBuffer(inputFile, maxTrianglesInBuffer * 0.5, decimationPercentage, meshData);
-    float R = meshData.inCoreTriangleBuffer.size() / nbTrianglesRead - (nbTrianglesWritten/decimationPercentage);
+    //float R = meshData.inCoreTriangleBuffer.size() / nbTrianglesRead - (nbTrianglesWritten/decimationPercentage);
 
     /*
     std::cout << "======INIT======" << std::endl;
@@ -161,18 +177,21 @@ bool streamSimplificationVisualization(const std::string& inputFileName, const s
     */
 
     while (!inputFile.eof()) {
+        std::cout << "======START ITERATION======" << std::endl;
         std::cout << "Reading " << maxTrianglesInBuffer * 0.5 << " Faces from inputfile\n";
         read(inputFile, maxTrianglesInBuffer * 0.5, meshData);
+
 
         int nb_decimated = (1-decimationPercentage) * maxTrianglesInBuffer / 4;
         std::cout << "Nb to be decimated : " << nb_decimated << std::endl;
         decimate (nb_decimated, meshData);
 
         if (visualizeSimplification) {
-            displayFromOutputFile(outputFileName, 0, nbTrianglesWritten);
+            displayFromOutputFile(outputFileName);
             displayFromBuffer(meshData.inCoreTriangleBuffer);
-            if (nbTrianglesWritten + meshData.inCoreTriangleBuffer.size() < nbTriangleTotal) {
-                displayFromInputFile(inputFileName, nbTrianglesWritten + meshData.inCoreTriangleBuffer.size(), nbTriangleTotal);
+            displayBorderTriangles(meshData);  // Ajoutez cette ligne
+            if (meshData.inCoreTriangleBuffer.size() < nbTriangleTotal) {
+                displayFromInputFile(inputFileName, meshData.inCoreTriangleBuffer.size(), nbTriangleTotal);
             }
             polyscope::show();
         }
@@ -189,22 +208,34 @@ bool streamSimplificationVisualization(const std::string& inputFileName, const s
             break;
         }
         // normalement write(outputFile, inCoreTriangleBuffer, maxTrianglesInBuffer * 0.5, &nbTrianglesWritten, &nbTrianglesInCore);
-        //write(outputFile, inCoreTriangleBuffer, nbTrianglesInCore, &nbTrianglesWritten, &nbTrianglesInCore);
+        std::cout << "Writing " << maxTrianglesInBuffer * 0.5 << " Faces to outputfile\n";
+        write(outputFile, meshData, (decimationPercentage/2) * maxTrianglesInBuffer , &nbTrianglesWritten);
+        std::cout << "======ITERATION INFO======"<< std::endl;
+        std::cout << "Read : " << nbTrianglesRead << std::endl;
+        std::cout << "Written : " << nbTrianglesWritten << std::endl;
+        std::cout << "In Core : " << meshData.inCoreTriangleBuffer.size() << std::endl;
+        std::cout << "======ITERATION INFO======"<< std::endl;
     }
     
     //decimate((1-decimationPercentage * (1/decimationPercentage)) * maxTrianglesInBuffer / 4, meshData);
 
     // ici quand on vide le buffer, il faut faire un truc (voir papier)
     if (meshData.inCoreTriangleBuffer.size() > 0) {
-        write(outputFile, meshData.inCoreTriangleBuffer,maxTrianglesInBuffer * 0.5 , &nbTrianglesWritten);
+        int n = 1.0f / decimationPercentage;
+       //write(outputFile, meshData, (n * decimationPercentage * maxTrianglesInBuffer) * 0.5, &nbTrianglesWritten);
+       writeRemainingTriangles(outputFile, meshData);
     }
 
     if (visualizeSimplification) {
-        displayFromOutputFile(outputFileName, 0, nbTrianglesWritten);
+        displayFromOutputFile(outputFileName);
         polyscope::removeSurfaceMesh("Unread Mesh");
         polyscope::removeSurfaceMesh("In core mesh");
         polyscope::show();
     }
+    std::cout << "======END======" << std::endl;
+    std::cout << "Read : " << nbTrianglesRead << std::endl;
+    std::cout << "Written : " << nbTrianglesWritten << std::endl;
+    std::cout << "In Core : " << meshData.inCoreTriangleBuffer.size() << std::endl;
 
 
     return true;
@@ -228,7 +259,14 @@ bool initBuffer(std::ifstream& inputFile, int numberToRead, float decimationPerc
         decimate(numberToDecimate, meshData);
     }
 
-    //std::cout << "In Core : " << meshData.inCoreTriangleBuffer.size() << std::endl;
+    std::cout << "======INFO INIT ENDED======" << std::endl;
+    std::cout << "Read : " << meshData.unique_triangle_index << std::endl;
+    std::cout << "In Core : " << meshData.inCoreTriangleBuffer.size() << std::endl;
+    std::cout << "Written : 0 " << std::endl;
+    std::cout << "n : " << n << std::endl;
+    std::cout << "decimationPercentage : " << decimationPercentage << std::endl;
+    std::cout << "numberToRead : " << numberToRead << std::endl;
+    std::cout << "======INFO INIT ENDED======" << std::endl;
     // apres init buffer on devrait avoir lu au total n/2 n/2 Nmax triangles et ecrit 0
     return true;
 }
@@ -286,6 +324,7 @@ bool read(std::ifstream& inputFile,int numberToRead, StreamMeshData& meshData) {
         // process is a lambda function that processes the triangle and updates the triangleList and triangleQuadricMap
         auto process = [&](int vid, int nid1, int nid2) {
             meshData.triangleList[vid].push_back(meshData.unique_triangle_index);
+            meshData.vertexSimplified[meshData.unique_triangle_index] = false;
             if (meshData.triangleQuadricMap.find(vid) == meshData.triangleQuadricMap.end()) {
                 meshData.triangleQuadricMap[vid] = q;
             }
@@ -305,21 +344,329 @@ bool read(std::ifstream& inputFile,int numberToRead, StreamMeshData& meshData) {
     return true;
 }
 
-// DEPRECATED FOR NOW
-bool write(std::ofstream& outputFile, std::map<int, TriangleCoordinates>& inCoreTriangleBuffer, int numberToWrite,
-           int* trianglesWritten) {
-    // ajouter le truc pour choisir aléatoirement puis prendre le trianqle avec la plus grande erreur ?
-    std::cout << "Writting " << numberToWrite << " Faces to outputfile " << std::endl;
+void removeZeroTriangles(StreamMeshData& meshData) {
+    std::vector<int> trianglesToRemove;
+    
 
-    // la j'ecrit tout ce que qu'il y a dans le buffer pour le test de visualisation
-    //outputFile.write(reinterpret_cast<char*>(inCoreTriangleBuffer.data()), numberToWrite * sizeof(TriangleCoordinates));
-
-    //inCoreTriangleBuffer.clear();
-    *trianglesWritten += numberToWrite;
-
-    return true;
+    for (const auto& [triangleId, triangle] : meshData.inCoreTriangleBuffer) {
+        bool hasZeroCoordinates = 
+            (triangle.v1.x == 0 && triangle.v1.y == 0 && triangle.v1.z == 0) ||
+            (triangle.v2.x == 0 && triangle.v2.y == 0 && triangle.v2.z == 0) ||
+            (triangle.v3.x == 0 && triangle.v3.y == 0 && triangle.v3.z == 0);
+            
+        bool hasDuplicateVertices = 
+            (triangle.v1.x == triangle.v2.x && triangle.v1.y == triangle.v2.y && triangle.v1.z == triangle.v2.z) ||
+            (triangle.v1.x == triangle.v3.x && triangle.v1.y == triangle.v3.y && triangle.v1.z == triangle.v3.z) ||
+            (triangle.v2.x == triangle.v3.x && triangle.v2.y == triangle.v3.y && triangle.v2.z == triangle.v3.z);
+            
+        if (hasZeroCoordinates || hasDuplicateVertices) {
+            trianglesToRemove.push_back(triangleId);
+        }
+    }
+    
+    for (int triangleId : trianglesToRemove) {
+        auto& triangle = meshData.inCoreTriangleBuffer[triangleId];
+        
+        std::vector<int> vertexIds;
+        if (meshData.vertexMap.find(triangle.v1) != meshData.vertexMap.end())
+            vertexIds.push_back(meshData.vertexMap[triangle.v1]);
+        if (meshData.vertexMap.find(triangle.v2) != meshData.vertexMap.end())
+            vertexIds.push_back(meshData.vertexMap[triangle.v2]);
+        if (meshData.vertexMap.find(triangle.v3) != meshData.vertexMap.end())
+            vertexIds.push_back(meshData.vertexMap[triangle.v3]);
+        
+        for (int vertexId : vertexIds) {
+            if (meshData.triangleList.find(vertexId) != meshData.triangleList.end()) {
+                auto& triangles = meshData.triangleList[vertexId];
+                triangles.erase(std::remove(triangles.begin(), triangles.end(), triangleId), triangles.end());
+            }
+        }
+        
+        meshData.inCoreTriangleBuffer.erase(triangleId);
+    }
+    
+    if (!trianglesToRemove.empty()) {
+        std::cout << "Removed " << trianglesToRemove.size() << " invalid triangles with zero coordinates." << std::endl;
+    }
 }
 
+
+std::vector<int> getInBorderTriangles(StreamMeshData& meshData) {
+    removeZeroTriangles(meshData); 
+
+    std::vector<int> trianglesInBorder;
+    
+    for (const auto& [triangleId, triangle] : meshData.inCoreTriangleBuffer) {
+        int v1 = meshData.vertexMap[triangle.v1];
+        int v2 = meshData.vertexMap[triangle.v2];
+        int v3 = meshData.vertexMap[triangle.v3];
+        
+        bool v1InBorder = std::find(meshData.vertexNotInBorder.begin(), 
+                                    meshData.vertexNotInBorder.end(), 
+                                    v1) 
+                                    == meshData.vertexNotInBorder.end() ;
+        bool v2InBorder = std::find(meshData.vertexNotInBorder.begin(), 
+                                    meshData.vertexNotInBorder.end(), 
+                                    v2) 
+                                    == meshData.vertexNotInBorder.end() ;
+        bool v3InBorder = std::find(meshData.vertexNotInBorder.begin(), 
+                                    meshData.vertexNotInBorder.end(), 
+                                    v3) 
+                                    == meshData.vertexNotInBorder.end();
+                         
+        if (v1InBorder || v2InBorder || v3InBorder) {
+            trianglesInBorder.push_back(triangleId);
+        }
+    }
+    
+    return trianglesInBorder;
+}
+
+std::vector<int> getInBorderVertices(StreamMeshData& meshData) {
+    removeZeroTriangles(meshData); 
+
+    std::vector<int> verticesInBorder;
+    
+    for (const auto& [vertex, vertexId] : meshData.vertexMap) {
+
+        bool inBorder = std::find(meshData.vertexNotInBorder.begin(), 
+                                 meshData.vertexNotInBorder.end(), 
+                                 vertexId) 
+                                 == meshData.vertexNotInBorder.end();        
+        if (inBorder) {
+            verticesInBorder.push_back(vertexId);
+        } 
+    }
+    
+    return verticesInBorder;  
+}
+
+void displayBorderTriangles(StreamMeshData& meshData) {
+    std::vector<int> borderTriangles = getInBorderTriangles(meshData);
+    
+    if (borderTriangles.empty()) {
+        std::cout << "No border to be displayed" << std::endl;
+        return;
+    }else {
+        std::cout << "Triangles in border displayed : " << borderTriangles.size() << std::endl;
+    }
+    
+    std::vector<std::array<float, 3>> borderVertices;
+    std::vector<std::array<int, 3>> borderFaces;
+    
+    int faceIndex = 0;
+    for (const int& triangleId : borderTriangles) {
+        const auto& triangle = meshData.inCoreTriangleBuffer[triangleId];
+        
+        borderVertices.push_back({triangle.v1.x, triangle.v1.y, triangle.v1.z});
+        borderVertices.push_back({triangle.v2.x, triangle.v2.y, triangle.v2.z});
+        borderVertices.push_back({triangle.v3.x, triangle.v3.y, triangle.v3.z});
+        
+        borderFaces.push_back({3 * faceIndex, 3 * faceIndex + 1, 3 * faceIndex + 2});
+        faceIndex++;
+    }
+    
+    // Enregistrer et afficher le maillage
+    polyscope::registerSurfaceMesh("Border Triangles", borderVertices, borderFaces);
+    auto meshPtr = polyscope::getSurfaceMesh("Border Triangles");
+    // Couleur distincte pour les triangles en bordure (jaune)
+    meshPtr->setSurfaceColor(glm::vec3(0.9, 0.9, 0.0));
+}
+
+
+std::vector<int> getToBeWrittenTriangles(StreamMeshData& meshData, int numberToWrite) { // TODO : quand on va simplifier ne plus peut etre prioritiser en fonction de l'axe de la simplification
+    std::vector<int> trianglesInBorder = getInBorderTriangles(meshData);
+    std::cout << "Triangles in border : " << trianglesInBorder.size() << std::endl;
+    
+    // Créer un set pour une recherche efficace
+    std::unordered_set<int> borderSet(trianglesInBorder.begin(), trianglesInBorder.end());
+    
+    // Créer un vecteur pour les triangles non-bordure
+    std::vector<int> trianglesInBuffer;
+    trianglesInBuffer.reserve(meshData.inCoreTriangleBuffer.size());
+    
+    // Ajouter tous les triangles qui ne sont pas dans borderSet
+    for (const auto& [triangleId, _] : meshData.inCoreTriangleBuffer) {
+        if (borderSet.find(triangleId) == borderSet.end()) {
+            trianglesInBuffer.push_back(triangleId);
+        }
+    }
+    
+    std::cout << "Non-border triangles : " << trianglesInBuffer.size() << std::endl;
+    
+    // ca pas certain d'en avoir besoin
+    if (trianglesInBuffer.empty()) {
+        std::cout << "No triangles in border" << std::endl;
+        //TODO prendre un triangle au hasard dans le buffer
+    }else if (trianglesInBuffer.size() < numberToWrite) {
+        std::cout << "Not enough triangles in border" << std::endl;
+        //TODO ajouter des triangles au hasard dans le buffer ?
+    }
+
+    return trianglesInBuffer;
+} 
+
+
+
+
+// DEPRECATED FOR NOW
+bool write(std::ofstream &outputFile, StreamMeshData &meshData, int numberToWrite, int *trianglesWritten)
+{
+    int numberWritten = 0;
+    const int NB_CANDIDATES = 3;
+
+    std::vector<int> trianglesToBeWritten = getToBeWrittenTriangles(meshData, numberToWrite);
+    std::cout << "Valid Triangles : " << trianglesToBeWritten.size() << std::endl;
+    std::cout << "Number to write : " << numberToWrite << std::endl;
+
+    //assert(trianglesToBeWritten.size() > numberToWrite);
+
+    for (size_t i = 0; i < numberToWrite; i++)
+    {
+
+        float error = -1e10;
+        int triangleIndexToBeDeleted = -1;
+
+        // nb_candidates * l'opération de selection
+        for (size_t j = 0; j < NB_CANDIDATES; j++)
+        {
+
+            if(trianglesToBeWritten.size() == 0)
+            {
+                std::cout << "No triangles left to be written" << std::endl;
+                break;
+            }
+
+            int randomTriangleIndex = rand() % trianglesToBeWritten.size();
+            int triangleIndex = trianglesToBeWritten[randomTriangleIndex];
+
+            if (meshData.inCoreTriangleBuffer.find(triangleIndex) == meshData.inCoreTriangleBuffer.end()) {
+                trianglesToBeWritten.erase(trianglesToBeWritten.begin() + randomTriangleIndex);
+                continue;
+            }
+
+            TriangleCoordinates triangle = meshData.inCoreTriangleBuffer[triangleIndex];
+
+            Vertex triangleVertexA = triangle.v1;
+            Vertex triangleVertexB = triangle.v2;
+            Vertex triangleVertexC = triangle.v3;
+
+            Vertex triangleCenter = {
+                (triangleVertexA.x + triangleVertexB.x + triangleVertexC.x) / 3,
+                (triangleVertexA.y + triangleVertexB.y + triangleVertexC.y) / 3,
+                (triangleVertexA.z + triangleVertexB.z + triangleVertexC.z) / 3};
+
+            int triangleIdV1 = meshData.vertexMap[triangleVertexA];
+            int triangleIdV2 = meshData.vertexMap[triangleVertexB];
+            int triangleIdV3 = meshData.vertexMap[triangleVertexC];
+
+            Quadric triangleQuadric = meshData.triangleQuadricMap[triangleIdV1];
+            triangleQuadric = addQuadric(triangleQuadric, meshData.triangleQuadricMap[triangleIdV2]);
+            triangleQuadric = addQuadric(triangleQuadric, meshData.triangleQuadricMap[triangleIdV3]);
+
+            float currentError = evaluateError(triangleQuadric, triangleCenter);
+
+            if (currentError > error)
+            {
+                error = currentError;
+                triangleIndexToBeDeleted = triangleIndex;
+            }
+        }
+
+        if (triangleIndexToBeDeleted != -1)
+        {
+            auto &triangle = meshData.inCoreTriangleBuffer[triangleIndexToBeDeleted];
+
+            // Vérifier si le triangle a des valeurs nulles ou incohérentes
+            bool hasZeroCoordinates =
+                (triangle.v1.x == 0 && triangle.v1.y == 0 && triangle.v1.z == 0) ||
+                (triangle.v2.x == 0 && triangle.v2.y == 0 && triangle.v2.z == 0) ||
+                (triangle.v3.x == 0 && triangle.v3.y == 0 && triangle.v3.z == 0);
+
+            // Vérifier si deux sommets sont identiques (triangle dégénéré)
+            bool hasDuplicateVertices =
+                (triangle.v1.x == triangle.v2.x && triangle.v1.y == triangle.v2.y && triangle.v1.z == triangle.v2.z) ||
+                (triangle.v1.x == triangle.v3.x && triangle.v1.y == triangle.v3.y && triangle.v1.z == triangle.v3.z) ||
+                (triangle.v2.x == triangle.v3.x && triangle.v2.y == triangle.v3.y && triangle.v2.z == triangle.v3.z);
+
+            // Vérifier si le triangle est plat (les trois points sont alignés)
+            glm::vec3 v1(triangle.v2.x - triangle.v1.x, triangle.v2.y - triangle.v1.y, triangle.v2.z - triangle.v1.z);
+            glm::vec3 v2(triangle.v3.x - triangle.v1.x, triangle.v3.y - triangle.v1.y, triangle.v3.z - triangle.v1.z);
+            glm::vec3 normal = glm::cross(v1, v2);
+            float area = 0.5f * glm::length(normal);
+            bool isDegenerate = area < 1e-6f; // Si l'aire est proche de zéro
+
+            // Vérifier les valeurs NaN ou infinies
+            bool hasInvalidValues =
+                std::isnan(triangle.v1.x) || std::isinf(triangle.v1.x) ||
+                std::isnan(triangle.v1.y) || std::isinf(triangle.v1.y) ||
+                std::isnan(triangle.v1.z) || std::isinf(triangle.v1.z) ||
+                std::isnan(triangle.v2.x) || std::isinf(triangle.v2.x) ||
+                std::isnan(triangle.v2.y) || std::isinf(triangle.v2.y) ||
+                std::isnan(triangle.v2.z) || std::isinf(triangle.v2.z) ||
+                std::isnan(triangle.v3.x) || std::isinf(triangle.v3.x) ||
+                std::isnan(triangle.v3.y) || std::isinf(triangle.v3.y) ||
+                std::isnan(triangle.v3.z) || std::isinf(triangle.v3.z);
+
+            if (!hasZeroCoordinates && !hasDuplicateVertices && !isDegenerate && !hasInvalidValues)
+            {
+                if (outputFile.write(reinterpret_cast<char *>(&triangle), sizeof(TriangleCoordinates)))
+                {
+                    numberWritten++;
+
+                    int v1Id = meshData.vertexMap[triangle.v1];
+                    int v2Id = meshData.vertexMap[triangle.v2];
+                    int v3Id = meshData.vertexMap[triangle.v3];
+
+                    for (int vertexId : {v1Id, v2Id, v3Id}) {
+                        auto& triangles = meshData.triangleList[vertexId];
+                        triangles.erase(std::remove(triangles.begin(), triangles.end(), triangleIndexToBeDeleted), triangles.end());
+
+                        if (triangles.empty()) {
+
+                            for (auto it = meshData.vertexMap.begin(); it != meshData.vertexMap.end();) {
+                                if (it->second == vertexId) {
+                                    it = meshData.vertexMap.erase(it);
+                                } else {
+                                    ++it;
+                                }
+                            }
+
+                            auto it = std::find(meshData.vertexNotInBorder.begin(), meshData.vertexNotInBorder.end(), vertexId);
+                            if (it != meshData.vertexNotInBorder.end()) {
+                                meshData.vertexNotInBorder.erase(it);
+                            }
+
+                            meshData.triangleList.erase(vertexId);
+                            meshData.adjacencyList.erase(vertexId);
+                            meshData.adjacencyListAlreadySeen.erase(vertexId);
+                            meshData.triangleQuadricMap.erase(vertexId);
+                            meshData.vertexSimplified.erase(vertexId);
+                        }
+                    }
+                    meshData.inCoreTriangleBuffer.erase(triangleIndexToBeDeleted);
+                }else {
+                    std::cerr << "Error writing triangle to output file." << std::endl;
+                }
+            }
+            else
+            {
+                /*
+                std::cerr << "Triangle has invalid values or is degenerate." << std::endl;
+                std::cout << "Triangle values: "
+                          << triangle.v1.x << "," << triangle.v1.y << "," << triangle.v1.z << " | "
+                          << triangle.v2.x << "," << triangle.v2.y << "," << triangle.v2.z << " | "
+                          << triangle.v3.x << "," << triangle.v3.y << "," << triangle.v3.z << std::endl;
+                */
+            }
+        }
+    }
+
+    *trianglesWritten += numberWritten;
+
+    std::cout << "Number of triangles written : " << numberWritten << std::endl;
+    return true;
+}
 
 void removeCommonTriangles(int vertexA, int vertexB, StreamMeshData& meshData) {
     // List of common triangles
@@ -770,6 +1117,8 @@ bool decimateThisEdge(int vertexA, int vertexB, StreamMeshData& meshData) {
 }
 
 int getRandomNeighborNotInBorder(int vertex, StreamMeshData& meshData) {
+    std::vector<int> verticesInBorder = getInBorderVertices(meshData);
+
     std::vector<int> & neighbors = meshData.adjacencyListAlreadySeen[vertex];
     if (neighbors.empty()) {
         return -1; 
@@ -777,12 +1126,34 @@ int getRandomNeighborNotInBorder(int vertex, StreamMeshData& meshData) {
 
     std::vector<int> neighborsNotInBorder;
     for (int neighbor : neighbors) {
-        if (std::find(meshData.vertexNotInBorder.begin(),
-                      meshData.vertexNotInBorder.end(),
-                      neighbor) != meshData.vertexNotInBorder.end()) {
-            neighborsNotInBorder.push_back(neighbor);
+        // 1. Vérifier que le neighbor n'est pas en bordure
+        if (std::find(verticesInBorder.begin(),
+                      verticesInBorder.end(),
+                      neighbor) == verticesInBorder.end()) {
+            
+            // 2. Vérifier que le neighbor existe dans vertexMap avec des coordonnées valides
+            bool foundInVertexMap = false;
+            Vertex neighborCoords;
+            
+            for (const auto& [vertexCoords, vertexId] : meshData.vertexMap) {
+                if (vertexId == neighbor) {
+                    foundInVertexMap = true;
+                    neighborCoords = vertexCoords;
+                    break;
+                }
+            }
+            
+            // 3. Vérifier que les coordonnées ne sont pas nulles
+            bool isZeroCoordinate = (neighborCoords.x == 0 && 
+                                    neighborCoords.y == 0 && 
+                                    neighborCoords.z == 0);
+            
+            if (foundInVertexMap && !isZeroCoordinate) {
+                neighborsNotInBorder.push_back(neighbor);
+            }
         }
     }
+    
     if (neighborsNotInBorder.empty()) {
         return -1; 
     }
@@ -797,6 +1168,11 @@ bool decimate(int nbToDecimate, StreamMeshData &meshData)
     if (meshData.vertexNotInBorder.size() == 0)
     {
         std::cout << "No vertex not in border, nothing to decimate." << std::endl;
+        return true;
+    }
+    if (nbToDecimate == 0)
+    {
+        std::cout << "No vertex to decimate." << std::endl;
         return true;
     }
     int decimated = 0;
@@ -858,6 +1234,8 @@ bool decimate(int nbToDecimate, StreamMeshData &meshData)
         if (bestVertexA != -1 && bestVertexB != -1)
         {
             decimateThisEdge(bestVertexA, bestVertexB, meshData);
+            meshData.vertexSimplified[bestVertexA] = true;
+            meshData.vertexSimplified[bestVertexB] = true;
             //std::cout << "Decimated edge (" << bestVertexA << "," << bestVertexB << ") with error " << bestError << std::endl;
             decimated++;
         }

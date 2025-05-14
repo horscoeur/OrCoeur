@@ -169,9 +169,9 @@ void decimatePartTriangle(StreamMeshData& meshData,int vertexA,int vertexB,int n
  * @param meshData   Reference to the mesh data (adjacency lists, triangle data, quadric map, etc.).
  * @return           true on success, false if any step fails (e.g., missing coordinates).
  */
-bool decimateThisEdge(int vertexA, int vertexB, Vertex & position, StreamMeshData& meshData);
+bool decimateThisEdge(int vertexA, int vertexB, Vertex position, StreamMeshData& meshData);
 
-bool decimateThisEdge(int vertexA, int vertexB, StreamMeshData& meshData);
+//bool decimateThisEdge(int vertexA, int vertexB, StreamMeshData& meshData);
 
 bool decimate(int numberToDecimate, StreamMeshData &meshData);// TODO CHange that
 

@@ -209,7 +209,7 @@ bool streamSimplificationVisualization(const std::string& inputFileName, const s
         }
         // normalement write(outputFile, inCoreTriangleBuffer, maxTrianglesInBuffer * 0.5, &nbTrianglesWritten, &nbTrianglesInCore);
         std::cout << "Writing " << maxTrianglesInBuffer * 0.5 << " Faces to outputfile\n";
-        write(outputFile, meshData, (decimationPercentage/2) * maxTrianglesInBuffer , &nbTrianglesWritten);
+        //write(outputFile, meshData, (decimationPercentage/2) * maxTrianglesInBuffer , &nbTrianglesWritten);
         std::cout << "======ITERATION INFO======"<< std::endl;
         std::cout << "Read : " << nbTrianglesRead << std::endl;
         std::cout << "Written : " << nbTrianglesWritten << std::endl;
@@ -217,13 +217,13 @@ bool streamSimplificationVisualization(const std::string& inputFileName, const s
         std::cout << "======ITERATION INFO======"<< std::endl;
     }
     
-    //decimate((1-decimationPercentage * (1/decimationPercentage)) * maxTrianglesInBuffer / 4, meshData);
+    decimate((1-decimationPercentage * (1/decimationPercentage)) * maxTrianglesInBuffer / 4, meshData);
 
     // ici quand on vide le buffer, il faut faire un truc (voir papier)
     if (meshData.inCoreTriangleBuffer.size() > 0) {
         int n = 1.0f / decimationPercentage;
        //write(outputFile, meshData, (n * decimationPercentage * maxTrianglesInBuffer) * 0.5, &nbTrianglesWritten);
-       writeRemainingTriangles(outputFile, meshData);
+       //writeRemainingTriangles(outputFile, meshData);
     }
 
     if (visualizeSimplification) {
@@ -386,7 +386,7 @@ void removeZeroTriangles(StreamMeshData& meshData) {
     }
     
     if (!trianglesToRemove.empty()) {
-        std::cout << "Removed " << trianglesToRemove.size() << " invalid triangles with zero coordinates." << std::endl;
+        //std::cout << "Removed " << trianglesToRemove.size() << " invalid triangles with zero coordinates." << std::endl;
     }
 }
 
@@ -423,7 +423,6 @@ std::vector<int> getInBorderTriangles(StreamMeshData& meshData) {
 }
 
 std::vector<int> getInBorderVertices(StreamMeshData& meshData) {
-    removeZeroTriangles(meshData); 
 
     std::vector<int> verticesInBorder;
     
@@ -1060,7 +1059,7 @@ void decimatePartTriangle(StreamMeshData& meshData, int vertexA, int vertexB, in
     meshData.triangleList[newIndice] = trianglesToNewIndice;
 }
 
-bool decimateThisEdge(int vertexA, int vertexB, StreamMeshData& meshData) {
+bool decimateThisEdge(int vertexA, int vertexB, Vertex optimalCoord, StreamMeshData& meshData) {
     // I made the assumption that we will always take the smallest index of the two
     // no matter if it's vertexA that we remove or vertexB,
     // plus it allows to keep the adjacency lists sorted.
@@ -1093,6 +1092,9 @@ bool decimateThisEdge(int vertexA, int vertexB, StreamMeshData& meshData) {
                          coordVertexB, coordNewIndice);
 
     removeCommonTriangles(vertexA, vertexB, meshData);
+
+    coordNewIndice = optimalCoord;
+
 
     // Part Decimate TriangleList : to update the triangle list of the new vertex and the triangles coordinates
     decimatePartTriangle(meshData, vertexA, vertexB, newIndice, oldIndice, coordVertexA,
@@ -1179,11 +1181,14 @@ bool decimate(int nbToDecimate, StreamMeshData &meshData)
 
     const int NUM_CANDIDATES = 15;
 
+    removeZeroTriangles(meshData); 
+
     for (size_t i = 0; i < nbToDecimate - 1; i++)
     {
         float bestError = std::numeric_limits<float>::max();
         int bestVertexA = -1;
         int bestVertexB = -1;
+        Vertex bestNewCoord = {0, 0, 0};
 
         for (size_t j = 0; j < NUM_CANDIDATES; j++)
         {
@@ -1205,7 +1210,9 @@ bool decimate(int nbToDecimate, StreamMeshData &meshData)
                 coordNewVertex = coordVertexB;
             }
 
-            //coordNewVertex = findOptimalVertex(combinedQuadric, coordVertexA, coordVertexB);
+
+            Quadric combinedQuadric = addQuadric(meshData.triangleQuadricMap[vertexA], meshData.triangleQuadricMap[vertexB]);
+            coordNewVertex = findOptimalVertex(combinedQuadric, coordVertexA, coordVertexB);
             //std::cout << "New vertex position: (" << coordNewVertex.x << "," << coordNewVertex.y << "," << coordNewVertex.z << ")\n";
 
             if(!isCollapseValid(vertexA, vertexB, coordNewVertex, meshData)){
@@ -1219,7 +1226,6 @@ bool decimate(int nbToDecimate, StreamMeshData &meshData)
 
 
 
-            Quadric combinedQuadric = addQuadric(meshData.triangleQuadricMap[vertexA], meshData.triangleQuadricMap[vertexB]);
 
             float error = evaluateError(combinedQuadric, coordNewVertex);
 
@@ -1228,12 +1234,13 @@ bool decimate(int nbToDecimate, StreamMeshData &meshData)
                 bestError = error;
                 bestVertexA = vertexA;
                 bestVertexB = vertexB;
+                bestNewCoord = coordNewVertex;
             }
         }
 
         if (bestVertexA != -1 && bestVertexB != -1)
         {
-            decimateThisEdge(bestVertexA, bestVertexB, meshData);
+            decimateThisEdge(bestVertexA, bestVertexB, bestNewCoord , meshData);
             meshData.vertexSimplified[bestVertexA] = true;
             meshData.vertexSimplified[bestVertexB] = true;
             //std::cout << "Decimated edge (" << bestVertexA << "," << bestVertexB << ") with error " << bestError << std::endl;

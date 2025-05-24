@@ -197,8 +197,8 @@ void adaptiveMeshSimplificationUI() {
 
         ImGui::Text("Adaptive mesh simplification settings:");
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 2);
-        ImGui::SliderInt("Grid Resolution##Adaptive", &adaptiveOptions.resolution, 10, 10000);
-        ImGui::SliderInt("Leafs Count", &adaptiveOptions.leafsCount, 10, 6000);
+        ImGui::SliderInt("Grid Resolution##Adaptive", &adaptiveOptions.resolution, 10, 1000000);
+        ImGui::SliderInt("Leafs Count", &adaptiveOptions.leafsCount, 10, 600000);
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
 
         ImGui::Text("Debugging options:");

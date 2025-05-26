@@ -2,7 +2,26 @@
 #define STREAM_SIMPLIFICATION_H
 
 #include "structures.h"
+struct vertexAlreadyBeSimplify {
+    int vertexId;
+    bool isSimplified = false;
 
+    operator int() const {
+        return vertexId;
+    }
+    //Surcharge de l'opérateur == pour comparer les vertex
+    bool operator==(const vertexAlreadyBeSimplify& other) const {
+        return vertexId == other.vertexId;
+    }
+    //Surcharge de l'opérateur < pour comparer les vertex
+    bool operator<(const vertexAlreadyBeSimplify& other) const {
+        return vertexId < other.vertexId;
+    }
+    //Surcharge de l'opérateur > pour comparer les vertex
+    bool operator>(const vertexAlreadyBeSimplify& other) const {
+        return vertexId > other.vertexId;
+    }
+};
 
 struct StreamMeshData {
     // Map to store the vertex coordinates and their corresponding indices
@@ -13,17 +32,20 @@ struct StreamMeshData {
     std::map<int, std::vector<int>> adjacencyList;
     // Map to store the adjacency list of each vertex that has already been seen
     std::map<int, std::vector<int>> adjacencyListAlreadySeen;
-    // Map to store the triangle coordinates and their corresponding indices
-    std::map<int, std::vector<int>> triangleList;
-    // Map to store the vertex indices that are not in the border
-    std::vector<int> vertexNotInBorder;
+    // Map to store the adjacency list of each vertex that has already been wrote
+    std::map<int, std::vector<int>> adjacencyListAlreadyWrote;
 
-    // Map to store if the vertex has been simplified
-    std::map<int, bool> vertexSimplified;
+    // Map to associate each vertex with a list of triangles it belongs to
+    std::map<int, std::vector<int>> triangleList;
+    // List to store the vertex indices that are not in the border
+    std::vector<vertexAlreadyBeSimplify> vertexNotInBorder;
+
+    // List to store the vertices that are in the border and can be written
+    std::vector<int> vertexInBorderBC;
 
     // Map to store the triangle coordinates in core memory
     std::map<int,TriangleCoordinates> inCoreTriangleBuffer;
-    // Map to store the quadric error metric for each triangle
+    // Map to store the quadric error metric for each vertex
     std::map<int, Quadric> triangleQuadricMap;
     // Both of these maps use this unique index to identify triangles
     int unique_triangle_index = 0;
@@ -33,11 +55,11 @@ struct StreamMeshData {
         actual_unique_id = 0;
         adjacencyList = std::map<int, std::vector<int>>();
         adjacencyListAlreadySeen = std::map<int, std::vector<int>>();
-        vertexNotInBorder = std::vector<int>();
+        adjacencyListAlreadyWrote = std::map<int, std::vector<int>>();
+        vertexNotInBorder = std::vector<vertexAlreadyBeSimplify>();
         triangleList = std::map<int, std::vector<int>>();
         triangleQuadricMap = std::map<int, Quadric>();
         unique_triangle_index = 0;
-        vertexSimplified = std::map<int, bool>();
     }
 };
 
@@ -174,6 +196,10 @@ bool decimateThisEdge(int vertexA, int vertexB, Vertex position, StreamMeshData&
 //bool decimateThisEdge(int vertexA, int vertexB, StreamMeshData& meshData);
 
 bool decimate(int numberToDecimate, StreamMeshData &meshData);// TODO CHange that
+
+bool writeOneEdge(std::ofstream& outputFile, int nbCandidateTotal, int* trianglesWritten, StreamMeshData& meshData);
+
+void insertionSort(std::vector<int>& neighborsVertex);
 
 bool write(std::ofstream &outputFile, StreamMeshData &meshData, int numberToWrite, int *trianglesWritten);
 

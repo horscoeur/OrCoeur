@@ -166,7 +166,7 @@ inline float evaluateTotalError(const std::vector<Quadric>& quadrics, const Vert
 
 /**
  * @brief Finds the optimal point that minimizes the quadric error.
- * 
+ *
  * This function solves the linear system A*x = -b to find the point
  * that minimizes the quadric error. If the system is not solvable,
  * it returns the origin (0, 0, 0).
@@ -179,152 +179,45 @@ inline Vertex findOptimalVertex(const Quadric& quadric) {
     Eigen::Matrix3f A;
     for (int i = 0; i < 3; ++i) {
         for (int j = 0; j < 3; ++j) {
-            A(i, j) = quadric(i, j); 
+            A(i, j) = quadric(i, j);
         }
     }
-    
-    // Extract the right side vector -b 
+
+    // Extract the right side vector -b
     Eigen::Vector3f b;
-    b(0) = -quadric(0, 3);  
-    b(1) = -quadric(1, 3); 
-    b(2) = -quadric(2, 3);  
-    
+    b(0) = -quadric(0, 3);
+    b(1) = -quadric(1, 3);
+    b(2) = -quadric(2, 3);
+
     // Try to solve the system A*x = b
     Eigen::Vector3f result;
-    
-    // Check if matrix is invertible 
+
+    // Check if matrix is invertible
     Eigen::FullPivLU<Eigen::Matrix3f> lu(A);
     if (lu.isInvertible()) {
         // Matrix is invertible, solve the system
         result = A.fullPivLu().solve(b);
         return {result(0), result(1), result(2)};
     } else {
-        // Use LDLT to solve
-        Eigen::LDLT<Eigen::Matrix3f> ldlt(A);
-        if (ldlt.info() == Eigen::Success) {
-            result = ldlt.solve(b);
-            
-            // Check if the result is valid
-            bool valid = true;
-            for (int i = 0; i < 3; ++i) {
-                if (std::isnan(result(i))) {
-                    valid = false;
-                    break;
-                }
-            }
-            
-            if (valid) {
-                return {result(0), result(1), result(2)};
+        // Use SVD to solve
+        Eigen::JacobiSVD<Eigen::Matrix3f> svd(A, Eigen::ComputeFullU | Eigen::ComputeFullV);
+        result = svd.solve(b);
+
+        // Check if the result is valid
+        bool valid = true;
+        for (int i = 0; i < 3; ++i) {
+            if (std::isnan(result(i))) {
+                valid = false;
+                break;
             }
         }
-        
-        return {0.0f, 0.0f, 0.0f};
+
+        if (valid) {
+            return {result(0), result(1), result(2)};
+        } else {
+            return {0.0f, 0.0f, 0.0f};
+        }
     }
-
-} 
-
-inline bool isOnEdge(const Vertex &point, const Vertex &vertexA, const Vertex &vertexB)
-{
-    if (point.x < std::min(vertexA.x, vertexB.x) || point.x > std::max(vertexA.x, vertexB.x))
-    {
-        return false;
-    }
-    if (point.y < std::min(vertexA.y, vertexB.y) || point.y > std::max(vertexA.y, vertexB.y))
-    {
-        return false;
-    }
-    if (point.z < std::min(vertexA.z, vertexB.z) || point.z > std::max(vertexA.z, vertexB.z))
-    {
-        return false;
-    }
-
-    Vertex vecAP = {
-        point.x - vertexA.x,
-        point.y - vertexA.y,
-        point.z - vertexA.z};
-
-    Vertex vecAB = {
-        vertexB.x - vertexA.x,
-        vertexB.y - vertexA.y,
-        vertexB.z - vertexA.z};
-    
-    float lengthAB = sqrt(vecAB.x*vecAB.x + vecAB.y*vecAB.y + vecAB.z*vecAB.z);
-    
-    float crossX = vecAP.y * vecAB.z - vecAP.z * vecAB.y;
-    float crossY = vecAP.z * vecAB.x - vecAP.x * vecAB.z;
-    float crossZ = vecAP.x * vecAB.y - vecAP.y * vecAB.x;
-
-    float crossMagnitude = sqrt(crossX*crossX + crossY*crossY + crossZ*crossZ);
-
-    if (crossMagnitude / lengthAB > 1e-6) {
-        return false; 
-    }
-
-    return true;
-}
-
-inline Vertex findOptimalVertex(const Quadric &quadric, const Vertex &vA, const Vertex &vB)
-{
-    // 1) on reconstruit la matrice Eigen
-    Eigen::Matrix4f Q;
-    for (int i = 0; i < 4; ++i)
-        for (int j = 0; j < 4; ++j)
-            Q(i, j) = quadric(i, j);
-
-    // Partition
-    Eigen::Matrix3f A = Q.topLeftCorner<3, 3>();
-    Eigen::Vector3f b = -Q.topRightCorner<3, 1>();
-
-    // 1) tentative QR
-    Eigen::Vector3f sol = A.colPivHouseholderQr().solve(b);
-    bool good = (A * sol).isApprox(b, 1e-6f);
-
-    if (good)
-    {
-        // 2) clamp sur [vA,vB]
-        Eigen::Vector3f VA{vA.x, vA.y, vA.z},
-            VB{vB.x, vB.y, vB.z};
-        Eigen::Vector3f d = VB - VA;
-        float t = d.dot(sol - VA) / d.squaredNorm();
-        t = std::clamp(t, 0.0f, 1.0f);
-        Eigen::Vector3f proj = VA + t * d;
-
-        // 3) comparer erreurs
-        auto err = [&](const Eigen::Vector3f &v3)
-        {
-            Eigen::Vector4f vh{v3(0), v3(1), v3(2), 1.f};
-            return vh.transpose() * Q * vh;
-        };
-        float eA = err(VA), eB = err(VB), eP = err(proj);
-        if (eA <= eB && eA <= eP)
-            return vA;
-        else if (eB <= eA && eB <= eP)
-            return vB;
-        else
-            return Vertex{proj(0), proj(1), proj(2)};
-    }
-
-    // 4) fallback 4×4 (optionnel) puis endpoints
-    Eigen::Matrix4f Qhat = Q;
-    Qhat.row(3) = Eigen::Vector4f(0, 0, 0, 1);
-    Qhat.col(3) = Eigen::Vector4f(0, 0, 0, 1);
-    if (std::abs(Qhat.determinant()) > 1e-6f)
-    {
-        auto sol4 = Qhat.inverse() * Eigen::Vector4f(0, 0, 0, 1);
-        return {sol4(0) / sol4(3), sol4(1) / sol4(3), sol4(2) / sol4(3)};
-    }
-
-    // 5) ultime fallback : comparer vA/vB
-    float eA = ([&]()
-                {
-    Eigen::Vector4f vh{vA.x,vA.y,vA.z,1.f};
-    return vh.transpose()*Q*vh; })();
-        float eB = ([&]()
-                    {
-    Eigen::Vector4f vh{vB.x,vB.y,vB.z,1.f};
-    return vh.transpose()*Q*vh; })();
-        return (eA < eB) ? vA : vB;
-
 }
 
 #endif // QUADRIC_CALCULATOR_H

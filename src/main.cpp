@@ -2,6 +2,7 @@
 #include "ui.h"
 #include "imfilebrowser.h"
 #include "mesh_conversion.h"
+#include "mesh_loader.h"
 
 /**
  * @brief Main function initializing Polyscope and handling UI.
@@ -9,13 +10,6 @@
 int main(int argc, char **argv) {
     // Initialize Polyscope
     polyscope::init();
-
-    // File selection dialog
-    char filename[2048] = "";
-    int resolution = 5;
-    ImGui::FileBrowser fileDialog;
-    fileDialog.SetTitle("Open a mesh file");
-    fileDialog.SetTypeFilters({".obj", ".ply"});
 
     // Apply ImGui style
     polyscope::options::configureImGuiStyleCallback = configureImGuiStyle;
@@ -25,9 +19,27 @@ int main(int argc, char **argv) {
 
     // Register user callback for UI
     polyscope::state::userCallback = [&]() {
-        handleFileSelection(filename, fileDialog);
-        conversionInfoPopup(filename, fileDialog);
-        cuttingInfoPopup(filename, resolution);
+        handleFileSelection();
+        loadMeshUI();
+
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 20);
+        ImGui::Separator();
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
+
+        conversionUI();
+
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 20);
+        ImGui::Separator();
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
+
+        normalMeshSimplificationUI();
+
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 20);
+        ImGui::Separator();
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
+
+        adaptiveMeshSimplificationUI();
+
         streamSimplificationPopup();
     };
 

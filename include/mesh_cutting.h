@@ -24,6 +24,6 @@
  * @param cutTheMesh If true, the mesh will be cut, otherwise only the grid will be displayed.
  * @return True if the mesh was successfully cut, false otherwise.
  */
-bool meshCutting(const std::string &filename, std::string &outputFilenamePlaneEquation, std::string &outputFilenameTriangleCluster, int resolution, bool cutTheMesh = true);
+bool meshCutting(const std::string &filename, const std::string &outputFilenamePlaneEquation, const std::string &outputFilenameTriangleCluster, int resolution, bool cutTheMesh = true);
 
 #endif //MESH_CUTTING_H

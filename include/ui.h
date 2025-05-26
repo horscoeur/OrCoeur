@@ -3,34 +3,33 @@
 
 #include "imgui.h"
 #include "imfilebrowser.h"
+#include "polyscope/point_cloud.h"
+
+enum SimplificationMode {
+    SIMPLIFICATION_MODE_NORMAL,
+    SIMPLIFICATION_MODE_ADAPTIVE,
+};
+
 
 /**
  * @brief Configures the ImGui color scheme and style.
  */
 void configureImGuiStyle();
 
-/**
- * @brief Handles the file selection dialog and mesh loading.
- * @param filename Buffer to store the selected file path.
- * @param fileDialog ImGui file browser instance.
- */
-void handleFileSelection(char* filename, ImGui::FileBrowser& fileDialog);
+void handleFileSelection();
 
-/**
- * @brief Displays the main conversion popup window.
- * @param filename The selected file path.
- * @param fileDialog ImGui file browser instance.
- */
-void conversionInfoPopup(char* filename, ImGui::FileBrowser& fileDialog);
+void loadMeshUI();
+void conversionUI();
+void normalMeshSimplificationUI();
+void adaptiveMeshSimplificationUI();
 
+void normalMeshSimplificationPipeline(std::string &outputFilenameOBJ);
+void adaptiveMeshSimplificationPipeline(std::string &outputFilenameOBJ);
 
-/**
- * @brief Displays the mesh cutting popup window.
- * @param filename The selected file path.
- * @param resolution The resolution of the cutting.
- */
-void cuttingInfoPopup(char* filename, int &resolution);
+// Debugging functions
+void visualizeLeafs();
 
+void convertToObjSoup(const std::string &outputFilenameBinary);
 
 void streamSimplificationPopup();
 

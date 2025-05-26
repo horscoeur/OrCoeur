@@ -84,6 +84,23 @@ struct Grid {
         return getIndex(getCellX(pos), getCellY(pos), getCellZ(pos));
     }
 
+    [[nodiscard]]
+    uint64_t getLinearIndex(const Vertex& v) const {
+        auto [i, j, k] = std::make_tuple(getCellX(v), getCellY(v), getCellZ(v));
+        return static_cast<uint64_t>(i) +
+               static_cast<uint64_t>(j) * resolution +
+               static_cast<uint64_t>(k) * resolution * resolution;
+    }
+
+    [[nodiscard]]
+    uint64_t getLinearIndex(const int i, const int j, const int k) const {
+        return static_cast<uint64_t>(i) +
+               static_cast<uint64_t>(j) * resolution +
+               static_cast<uint64_t>(k) * resolution * resolution;
+    }
+
+
+
     void displayGrid() {
         std::vector<Vertex> gridCenters;
 
@@ -189,11 +206,48 @@ struct GridPlaneEntry {
 };
 
 /**
+ * @brief Represents a dual quadric.
+ *
+ * The dual quadric encodes information about a set of points to measure the distance of a plane to these points.
+ * It is defined by:
+ *    - A 3x3 matrix D stored in an array of 9 floats,
+ *    - A vector e (of type Vertex),
+ *    - A scalar f (often equal to 1 for a single vertex).
+ */
+struct DualQuadric {
+    std::array<float, 9> D{}; // 3x3 matrix stored in a row-major order
+    Vertex e{}; // 3D vector
+    float f = 0.0f; // Scalar
+};
+
+/**
+ * @brief Represents a grid entry for dual quadric quantization.
+ *
+ * Each record associates a cell index with a vertex (for which the dual quadric will be calculated).
+ */
+struct GridDualEntry {
+    int gridIndex;
+    Vertex vertex;
+};
+
+/**
+ * @brief Represents a cell in the grid.
+ *
+ * Each cell contains a representative vertex, a dual quadric, and a quadric.
+ */
+struct CellData {
+    int cellIndex{};
+    Vertex representative{};
+    DualQuadric dualQuadric;
+    Quadric quadric;
+};
+
+/**
  * @brief Represents the triangle and its barycenter
  */
 struct TriangleWithBarycenter {
     TriangleCoordinates triangle;
-    Vertex barycenter;  
+    Vertex barycenter;
 };
 
 #endif // STRUCTURES_H

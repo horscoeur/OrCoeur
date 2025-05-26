@@ -170,7 +170,7 @@ void normalMeshSimplificationUI() {
 
         ImGui::Text("Mesh simplification settings:");
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 2);
-        ImGui::SliderInt("Grid Resolution##Normal", &normalOptions.resolution, 2, 2000);
+        ImGui::SliderInt("Grid Resolution##Normal", &normalOptions.resolution, 2, 500);
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
 
         // Button to simplify the loaded mesh
@@ -197,7 +197,7 @@ void adaptiveMeshSimplificationUI() {
 
         ImGui::Text("Adaptive mesh simplification settings:");
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 2);
-        ImGui::SliderInt("Grid Resolution##Adaptive", &adaptiveOptions.resolution, 10, 1000000);
+        ImGui::SliderInt("Grid Resolution##Adaptive", &adaptiveOptions.resolution, 10, 600000);
         ImGui::SliderInt("Leafs Count", &adaptiveOptions.leafsCount, 10, 600000);
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
 
@@ -246,12 +246,12 @@ void normalMeshSimplificationPipeline(std::string &outputFilenameOBJ) {
     convertToObjSoup(outputFilenameBinary);
 
     // Perform the mesh cutting
-    meshCutting(outputFilenameBinary, outputFilenamePlaneEquation, outputFilenameTriangleCluster, normalOptions.resolution);
+    const Grid grid = meshCutting(outputFilenameBinary, outputFilenamePlaneEquation, outputFilenameTriangleCluster, normalOptions.resolution);
 
     externalMergeSortGridPlaneEntry(outputFilenamePlaneEquation, outputFilenamePlaneEquationSorted);
     remove(outputFilenamePlaneEquation.c_str());
 
-    computeGridCellRepresentatives(outputFilenamePlaneEquationSorted,  outputFilenameRepresentatives);
+    computeGridCellRepresentatives(outputFilenamePlaneEquationSorted,  outputFilenameRepresentatives, grid);
     remove(outputFilenamePlaneEquationSorted.c_str());
 
     generateSimplifiedMeshBin(outputFilenameRepresentatives, outputFilenameTriangleCluster, outputFilenameSimplified);
@@ -261,6 +261,7 @@ void normalMeshSimplificationPipeline(std::string &outputFilenameOBJ) {
     // Convert the simplified mesh to OBJ format
     convertOBJSoupToOBJ(outputFilenameSimplified, outputFilenameOBJ);
     remove(outputFilenameSimplified.c_str());
+    
 }
 
 void adaptiveMeshSimplificationPipeline(std::string &outputFilenameOBJ) {

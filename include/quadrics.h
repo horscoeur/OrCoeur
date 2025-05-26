@@ -252,4 +252,92 @@ inline Vertex findOptimalVertex(const Quadric& quadric) {
 
 } 
 
+
+inline std::pair<Vertex, Vertex> getCellBounds(const int gridIndex, const Grid& grid) {
+
+    const int k = gridIndex % grid.resolution;
+    const int j = (gridIndex / grid.resolution) % grid.resolution;
+    const int i = gridIndex / (grid.resolution * grid.resolution);
+    
+    const float cellSizeX = (grid.max.x - grid.min.x) / grid.resolution;
+    const float cellSizeY = (grid.max.y - grid.min.y) / grid.resolution;
+    const float cellSizeZ = (grid.max.z - grid.min.z) / grid.resolution;
+    
+    Vertex minPoint = {
+        grid.min.x + i * cellSizeX,
+        grid.min.y + j * cellSizeY,
+        grid.min.z + k * cellSizeZ
+    };
+    
+    Vertex maxPoint = {
+        grid.min.x + (i + 1) * cellSizeX,
+        grid.min.y + (j + 1) * cellSizeY,
+        grid.min.z + (k + 1) * cellSizeZ
+    };
+    
+    return {minPoint, maxPoint};
+}
+
+inline Vertex constrainToCell(const Vertex& point, const Vertex& minBound, const Vertex& maxBound) {
+    return {
+        std::clamp(point.x, minBound.x, maxBound.x),
+        std::clamp(point.y, minBound.y, maxBound.y),
+        std::clamp(point.z, minBound.z, maxBound.z)
+    };
+}
+
+inline Vertex getCellCenter(const Vertex& minBound, const Vertex& maxBound) {
+    return {
+        (minBound.x + maxBound.x) * 0.5f,
+        (minBound.y + maxBound.y) * 0.5f,
+        (minBound.z + maxBound.z) * 0.5f
+    };
+}
+
+
+inline Vertex findOptimalVertex(const Quadric& quadric, const int gridIndex, const Grid& grid) {
+
+    auto [minBound, maxBound] = getCellBounds(gridIndex, grid);
+    
+    Eigen::Matrix3f A;
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            A(i, j) = quadric(i, j); 
+        }
+    }
+    
+    Eigen::Vector3f b;
+    b(0) = -quadric(0, 3);  
+    b(1) = -quadric(1, 3); 
+    b(2) = -quadric(2, 3);  
+    
+    Eigen::Vector3f result;
+
+    Eigen::FullPivLU<Eigen::Matrix3f> lu(A);
+    if (lu.isInvertible()) {
+        result = A.fullPivLu().solve(b);
+        Vertex point = {result(0), result(1), result(2)};
+        return constrainToCell(point, minBound, maxBound);
+    } else {
+        Eigen::LDLT<Eigen::Matrix3f> ldlt(A);
+        if (ldlt.info() == Eigen::Success) {
+            result = ldlt.solve(b);
+            
+            bool valid = true;
+            for (int i = 0; i < 3; ++i) {
+                if (std::isnan(result(i))) {
+                    valid = false;
+                    break;
+                }
+            }
+            
+            if (valid) {
+                Vertex point = {result(0), result(1), result(2)};
+                return constrainToCell(point, minBound, maxBound);
+            }
+        }
+        return getCellCenter(minBound, maxBound);
+    }
+}
+
 #endif // QUADRIC_CALCULATOR_H

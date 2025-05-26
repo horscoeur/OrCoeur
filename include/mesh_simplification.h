@@ -20,7 +20,7 @@
  * @param outputFilename Output file
  * @return File containing the optimal vertex for each grid cell
  */
-bool computeGridCellRepresentatives(const std::string &inputFilenamePlaneEquation, const std::string &outputFilename);
+bool computeGridCellRepresentatives(const std::string &inputFilenamePlaneEquation, const std::string &outputFilename, const Grid &grid);
 
 /**
  * @brief Sorts the cluster file by the 1st index (v1) and replaces it with the corresponding vertex

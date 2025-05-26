@@ -11,6 +11,7 @@
 #include "quadrics.h"
 #include "polyscope/point_cloud.h"
 
+
 /**
  * @brief Cuts a mesh into clusters and writes his plane equation and triangle clusters to separate files.
  *
@@ -24,6 +25,6 @@
  * @param cutTheMesh If true, the mesh will be cut, otherwise only the grid will be displayed.
  * @return True if the mesh was successfully cut, false otherwise.
  */
-bool meshCutting(const std::string &filename, const std::string &outputFilenamePlaneEquation, const std::string &outputFilenameTriangleCluster, int resolution, bool cutTheMesh = true);
+Grid meshCutting(const std::string &filename, const std::string &outputFilenamePlaneEquation, const std::string &outputFilenameTriangleCluster, int resolution, bool cutTheMesh = true);
 
 #endif //MESH_CUTTING_H

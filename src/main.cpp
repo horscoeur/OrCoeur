@@ -40,6 +40,10 @@ int main(int argc, char **argv) {
 
         adaptiveMeshSimplificationUI();
 
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 20);
+        ImGui::Separator();
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
+
         streamSimplificationPopup();
     };
 

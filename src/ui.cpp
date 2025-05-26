@@ -173,7 +173,7 @@ void normalMeshSimplificationUI() {
 
         ImGui::Text("Mesh simplification settings:");
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 2);
-        ImGui::SliderInt("Grid Resolution##Normal", &normalOptions.resolution, 2, 500);
+        ImGui::SliderInt("Grid Resolution##Normal", &normalOptions.resolution, 2, 2000);
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
 
         // Button to simplify the loaded mesh
@@ -200,8 +200,8 @@ void adaptiveMeshSimplificationUI() {
 
         ImGui::Text("Adaptive mesh simplification settings:");
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 2);
-        ImGui::SliderInt("Grid Resolution##Adaptive", &adaptiveOptions.resolution, 10, 600000);
-        ImGui::SliderInt("Leafs Count", &adaptiveOptions.leafsCount, 10, 600000);
+        ImGui::SliderInt("Grid Resolution##Adaptive", &adaptiveOptions.resolution, 10, 10000);
+        ImGui::SliderInt("Leafs Count", &adaptiveOptions.leafsCount, 10, 6000);
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
 
         ImGui::Text("Debugging options:");
@@ -365,7 +365,7 @@ void streamSimplificationPopup() {
     static char selectedFilePath[512] = "";
 
     ImGui::SameLine();
-    if (ImGui::Button("Mesh Stream simplification")) {
+    if (ImGui::Button("Mesh Stream simplification (Version test)")) {
         ImGui::OpenPopup("Stream simplification");
     }
 

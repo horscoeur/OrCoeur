@@ -1258,7 +1258,7 @@ bool decimate(int nbToDecimate, StreamMeshData& meshData) {
 
 
             Quadric combinedQuadric = addQuadric(meshData.triangleQuadricMap[vertexA], meshData.triangleQuadricMap[vertexB]);
-            coordNewVertex = findOptimalVertex(combinedQuadric, coordVertexA, coordVertexB);
+            coordNewVertex = findOptimalVertex(combinedQuadric);
             //std::cout << "New vertex position: (" << coordNewVertex.x << "," << coordNewVertex.y << "," << coordNewVertex.z << ")\n";
 
             if(!isCollapseValid(vertexA, vertexB, coordNewVertex, meshData)){

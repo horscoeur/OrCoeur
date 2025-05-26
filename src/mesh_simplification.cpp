@@ -7,7 +7,7 @@
 #define BUFFER_SIZE 1024
 
 
-bool computeGridCellRepresentatives(const std::string &inputFilenamePlaneEquation, const std::string &outputFilename) {
+bool computeGridCellRepresentatives(const std::string &inputFilenamePlaneEquation, const std::string &outputFilename, const Grid &grid) {
     std::ifstream filePlaneEquation(inputFilenamePlaneEquation, std::ios::binary);
     if (!filePlaneEquation.is_open()) {
         std::cerr << "Error: Could not open file " << inputFilenamePlaneEquation << ".\n";
@@ -21,6 +21,8 @@ bool computeGridCellRepresentatives(const std::string &inputFilenamePlaneEquatio
         return false;
     }
 
+
+    std::unordered_map<int, bool> writtenIndices;
     GridPlaneEntry gridPlaneEntry;
     int currentGridIndex = -1;
     Quadric currentQuadric;
@@ -31,7 +33,7 @@ bool computeGridCellRepresentatives(const std::string &inputFilenamePlaneEquatio
 
             if (currentGridIndex != -1) {
                 // Solve the quadric to find the optimal vertex position
-                Vertex optimalVertex = findOptimalVertex(currentQuadric);
+                Vertex optimalVertex = findOptimalVertex(currentQuadric, currentGridIndex, grid);
                 
                 // Write the grid index and optimal vertex to the output file
                 outputFile.write(reinterpret_cast<const char*>(&currentGridIndex), sizeof(int));
@@ -50,6 +52,19 @@ bool computeGridCellRepresentatives(const std::string &inputFilenamePlaneEquatio
         Vertex optimalVertex = findOptimalVertex(currentQuadric);
         outputFile.write(reinterpret_cast<const char*>(&currentGridIndex), sizeof(int));
         outputFile.write(reinterpret_cast<const char*>(&optimalVertex), sizeof(Vertex));
+        writtenIndices[currentGridIndex] = true;
+    }
+
+    // Pour chaque cellule sans représentant, écrire le centre de la cellule
+    for (int i = 0; i < grid.resolution * grid.resolution * grid.resolution; ++i)
+    {
+        if (!writtenIndices[i])
+        {
+            auto [minBound, maxBound] = getCellBounds(i, grid);
+            Vertex centerPoint = getCellCenter(minBound, maxBound);
+            outputFile.write(reinterpret_cast<const char *>(&i), sizeof(int));
+            outputFile.write(reinterpret_cast<const char *>(&centerPoint), sizeof(Vertex));
+        }
     }
 
     return true; 

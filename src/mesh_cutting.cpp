@@ -1,12 +1,15 @@
 
 #include "mesh_cutting.h"
 
-bool meshCutting(const std::string &inFilenameBinary, const std::string &outputFilenamePlaneEquation, const std::string &outputFilenameTriangleCluster, int resolution, bool cutTheMesh) {
+Grid meshCutting(const std::string &inFilenameBinary, const std::string &outputFilenamePlaneEquation, const std::string &outputFilenameTriangleCluster, int resolution, bool cutTheMesh) {
+    
+    Grid grid(resolution);
+
     // Open the input file
     std::ifstream file(inFilenameBinary, std::ios::binary);
     if (!file.is_open()) {
         std::cerr << "Error: Could not open file " << inFilenameBinary << ".\n";
-        return false;
+        return grid;
     }
 
     // Pass the header
@@ -23,7 +26,7 @@ bool meshCutting(const std::string &inFilenameBinary, const std::string &outputF
     if (pos == -1) {
         std::cerr << "Error : Could not find the end of the header.\n";
         file.close();
-        return false;
+        return grid;
     }
 
 
@@ -33,10 +36,9 @@ bool meshCutting(const std::string &inFilenameBinary, const std::string &outputF
     if (!planeEquation.is_open() || !triangleCluster.is_open()) {
         std::cerr << "Error: Could not open output files.\n";
         file.close();
-        return false;
+        return grid;
     }
-    // Create the grid and the face
-    Grid grid(resolution);
+    // Create the face
     TriangleCoordinates face{};
 
     // First pass to get the min and max of the mesh
@@ -61,7 +63,7 @@ bool meshCutting(const std::string &inFilenameBinary, const std::string &outputF
         file.close();
         planeEquation.close();
         triangleCluster.close();
-        return true;
+        return grid;
     }
 
     // Rewind the file after the header
@@ -103,7 +105,7 @@ bool meshCutting(const std::string &inFilenameBinary, const std::string &outputF
     file.close();
     planeEquation.close();
     triangleCluster.close();
-    return true;
+    return grid;
 }
 
 
